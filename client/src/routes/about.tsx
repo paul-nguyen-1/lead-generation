@@ -1,7 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
+import RequireAuth from '#/components/RequireAuth'
 
 export const Route = createFileRoute('/about')({
-  component: About,
+  component: () => (
+    <RequireAuth>
+      <About />
+    </RequireAuth>
+  ),
 })
 
 function About() {

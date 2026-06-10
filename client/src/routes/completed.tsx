@@ -2,9 +2,14 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useLeads } from '#/lib/leads-store'
 import { formatDate, formatDateTime } from '#/lib/format'
 import { Pill } from '#/components/StatusPill'
+import RequireAuth from '#/components/RequireAuth'
 
 export const Route = createFileRoute('/completed')({
-  component: CompletedPage,
+  component: () => (
+    <RequireAuth roles={['admin']}>
+      <CompletedPage />
+    </RequireAuth>
+  ),
 })
 
 function CompletedPage() {

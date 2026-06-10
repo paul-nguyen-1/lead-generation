@@ -1,18 +1,36 @@
 import { useState } from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useLeads } from '#/lib/leads-store'
-import { CONTRACTORS, type Lead } from '#/data/leads'
+import { useAuth } from '#/lib/auth-store'
+import { useContractors } from '#/lib/contractors'
+import RequireAuth from '#/components/RequireAuth'
+import { type Lead } from '#/data/leads'
 import { formatDate } from '#/lib/format'
 import StatusPill from '#/components/StatusPill'
 import CriteriaChecklist from '#/components/CriteriaChecklist'
 import LeadQueueList from '#/components/LeadQueueList'
 
 export const Route = createFileRoute('/workflow/$contractorId')({
-  component: ContractorWorkflowPage,
+  component: () => {
+    const { contractorId } = Route.useParams()
+    return (
+      <RequireAuth
+        allow={(user) => user.role === 'admin' || user.id === contractorId}
+      >
+        <ContractorWorkflowPage />
+      </RequireAuth>
+    )
+  },
 })
 
 function ContractorWorkflowPage() {
   const { contractorId } = Route.useParams()
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
+  const { contractors } = useContractors({ enabled: isAdmin })
+  const contractorName = isAdmin
+    ? (contractors.find((c) => c.id === contractorId)?.name ?? 'Contractor')
+    : (user?.name ?? 'Contractor')
   const {
     leads,
     toggleCriterion,
@@ -20,7 +38,6 @@ function ContractorWorkflowPage() {
     submitForApproval,
     rejectLead,
   } = useLeads()
-  const contractor = CONTRACTORS.find((c) => c.id === contractorId)
   const queue = leads.filter(
     (lead) =>
       lead.assignedTo === contractorId &&
@@ -40,7 +57,7 @@ function ContractorWorkflowPage() {
         </Link>
         <p className="island-kicker mb-2 mt-3">Workflow</p>
         <h1 className="display-title text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl">
-          {contractor?.name ?? 'Contractor'} &mdash; Queue
+          {contractorName} &mdash; Queue
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-[var(--sea-ink-soft)]">
           Review each lead against our criteria, leave notes for the team,

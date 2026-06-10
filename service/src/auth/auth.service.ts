@@ -69,6 +69,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    if (!user.isActive) {
+      throw new UnauthorizedException('This account has been deactivated');
+    }
+
     const tokens = await this.issueTokens(user);
     return { ...tokens, user: this.usersService.toSafeUser(user) };
   }
@@ -85,7 +89,7 @@ export class AuthService {
     }
 
     const user = await this.usersService.findById(payload.sub);
-    if (!user || !user.refreshTokenHash) {
+    if (!user || !user.refreshTokenHash || !user.isActive) {
       throw new UnauthorizedException();
     }
 

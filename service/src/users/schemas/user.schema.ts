@@ -18,6 +18,9 @@ export class User {
   @Prop({ required: true, enum: Role, default: Role.Contractor })
   role: Role;
 
+  @Prop({ default: true })
+  isActive: boolean;
+
   @Prop({ type: String, default: null })
   refreshTokenHash: string | null;
 }

@@ -15,11 +15,6 @@ export interface Criterion {
   met: boolean
 }
 
-export interface Contractor {
-  id: string
-  name: string
-}
-
 export interface Lead {
   id: string
   name: string
@@ -40,11 +35,6 @@ export interface Lead {
   emailStatus: EmailStatus
   emailSentAt: string | null
 }
-
-export const CONTRACTORS: Array<Contractor> = [
-  { id: 'contractor-1', name: 'Alex Rivera' },
-  { id: 'contractor-2', name: 'Jamie Thompson' },
-]
 
 export const DEFAULT_CRITERIA: Array<Omit<Criterion, 'met'>> = [
   { id: 'budget', label: 'Budget confirmed' },

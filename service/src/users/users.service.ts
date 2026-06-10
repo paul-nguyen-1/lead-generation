@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
@@ -13,6 +18,7 @@ export interface SafeUser {
   email: string;
   name: string;
   role: Role;
+  isActive: boolean;
 }
 
 @Injectable()
@@ -58,6 +64,10 @@ export class UsersService implements OnModuleInit {
     return this.userModel.findById(id).exec();
   }
 
+  findAll(role?: Role) {
+    return this.userModel.find(role ? { role } : {}).exec();
+  }
+
   async create(data: {
     email: string;
     password: string;
@@ -80,12 +90,27 @@ export class UsersService implements OnModuleInit {
     await this.userModel.findByIdAndUpdate(userId, { refreshTokenHash }).exec();
   }
 
+  async setActive(userId: string, isActive: boolean): Promise<UserDocument> {
+    const update: Partial<User> = { isActive };
+    if (!isActive) {
+      update.refreshTokenHash = null;
+    }
+    const user = await this.userModel
+      .findByIdAndUpdate(userId, update, { new: true })
+      .exec();
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return user;
+  }
+
   toSafeUser(user: UserDocument): SafeUser {
     return {
       id: user._id.toString(),
       email: user.email,
       name: user.name,
       role: user.role,
+      isActive: user.isActive,
     };
   }
 }

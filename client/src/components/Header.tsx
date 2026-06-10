@@ -1,7 +1,16 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import ThemeToggle from './ThemeToggle'
+import { useAuth } from '#/lib/auth-store'
 
 export default function Header() {
+  const { status, user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  function handleLogout() {
+    logout()
+    void navigate({ to: '/login', replace: true })
+  }
+
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--line)] bg-[var(--header-bg)] px-4 backdrop-blur-lg">
       <nav className="page-wrap flex flex-wrap items-center gap-x-3 gap-y-2 py-3 sm:py-4">
@@ -15,39 +24,70 @@ export default function Header() {
           </Link>
         </h2>
 
-        <div className="order-3 flex w-full flex-wrap items-center gap-x-4 gap-y-1 pb-1 text-sm font-semibold sm:order-none sm:w-auto sm:flex-nowrap sm:pb-0">
-          <Link
-            to="/"
-            className="nav-link"
-            activeProps={{ className: 'nav-link is-active' }}
-          >
-            Home
-          </Link>
-          <Link
-            to="/workflow"
-            className="nav-link"
-            activeProps={{ className: 'nav-link is-active' }}
-          >
-            Workflow
-          </Link>
-          <Link
-            to="/approvals"
-            className="nav-link"
-            activeProps={{ className: 'nav-link is-active' }}
-          >
-            Approvals
-          </Link>
-          <Link
-            to="/completed"
-            className="nav-link"
-            activeProps={{ className: 'nav-link is-active' }}
-          >
-            Completed
-          </Link>
-        </div>
+        {status === 'authenticated' && user && (
+          <div className="order-3 flex w-full flex-wrap items-center gap-x-4 gap-y-1 pb-1 text-sm font-semibold sm:order-none sm:w-auto sm:flex-nowrap sm:pb-0">
+            {user.role === 'admin' ? (
+              <>
+                <Link
+                  to="/"
+                  className="nav-link"
+                  activeProps={{ className: 'nav-link is-active' }}
+                >
+                  Home
+                </Link>
+                <Link
+                  to="/workflow"
+                  className="nav-link"
+                  activeProps={{ className: 'nav-link is-active' }}
+                >
+                  Workflow
+                </Link>
+                <Link
+                  to="/approvals"
+                  className="nav-link"
+                  activeProps={{ className: 'nav-link is-active' }}
+                >
+                  Approvals
+                </Link>
+                <Link
+                  to="/completed"
+                  className="nav-link"
+                  activeProps={{ className: 'nav-link is-active' }}
+                >
+                  Completed
+                </Link>
+                <Link
+                  to="/contractors"
+                  className="nav-link"
+                  activeProps={{ className: 'nav-link is-active' }}
+                >
+                  Contractors
+                </Link>
+              </>
+            ) : (
+              <Link
+                to="/workflow/$contractorId"
+                params={{ contractorId: user.id }}
+                className="nav-link"
+                activeProps={{ className: 'nav-link is-active' }}
+              >
+                My Queue
+              </Link>
+            )}
+          </div>
+        )}
 
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
           <ThemeToggle />
+          {status === 'authenticated' && user && (
+            <button
+              type="button"
+              className="demo-button demo-button-secondary"
+              onClick={handleLogout}
+            >
+              Log out
+            </button>
+          )}
         </div>
       </nav>
     </header>
