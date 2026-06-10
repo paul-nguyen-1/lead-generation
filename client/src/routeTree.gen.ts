@@ -9,9 +9,29 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WorkflowRouteImport } from './routes/workflow'
+import { Route as CompletedRouteImport } from './routes/completed'
+import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as WorkflowIndexRouteImport } from './routes/workflow.index'
+import { Route as WorkflowContractorIdRouteImport } from './routes/workflow.$contractorId'
 
+const WorkflowRoute = WorkflowRouteImport.update({
+  id: '/workflow',
+  path: '/workflow',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompletedRoute = CompletedRouteImport.update({
+  id: '/completed',
+  path: '/completed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApprovalsRoute = ApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -22,35 +42,104 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WorkflowIndexRoute = WorkflowIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => WorkflowRoute,
+} as any)
+const WorkflowContractorIdRoute = WorkflowContractorIdRouteImport.update({
+  id: '/$contractorId',
+  path: '/$contractorId',
+  getParentRoute: () => WorkflowRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/approvals': typeof ApprovalsRoute
+  '/completed': typeof CompletedRoute
+  '/workflow': typeof WorkflowRouteWithChildren
+  '/workflow/$contractorId': typeof WorkflowContractorIdRoute
+  '/workflow/': typeof WorkflowIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/approvals': typeof ApprovalsRoute
+  '/completed': typeof CompletedRoute
+  '/workflow/$contractorId': typeof WorkflowContractorIdRoute
+  '/workflow': typeof WorkflowIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/approvals': typeof ApprovalsRoute
+  '/completed': typeof CompletedRoute
+  '/workflow': typeof WorkflowRouteWithChildren
+  '/workflow/$contractorId': typeof WorkflowContractorIdRoute
+  '/workflow/': typeof WorkflowIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/approvals'
+    | '/completed'
+    | '/workflow'
+    | '/workflow/$contractorId'
+    | '/workflow/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about'
-  id: '__root__' | '/' | '/about'
+  to:
+    | '/'
+    | '/about'
+    | '/approvals'
+    | '/completed'
+    | '/workflow/$contractorId'
+    | '/workflow'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/approvals'
+    | '/completed'
+    | '/workflow'
+    | '/workflow/$contractorId'
+    | '/workflow/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  ApprovalsRoute: typeof ApprovalsRoute
+  CompletedRoute: typeof CompletedRoute
+  WorkflowRoute: typeof WorkflowRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/workflow': {
+      id: '/workflow'
+      path: '/workflow'
+      fullPath: '/workflow'
+      preLoaderRoute: typeof WorkflowRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/completed': {
+      id: '/completed'
+      path: '/completed'
+      fullPath: '/completed'
+      preLoaderRoute: typeof CompletedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/approvals': {
+      id: '/approvals'
+      path: '/approvals'
+      fullPath: '/approvals'
+      preLoaderRoute: typeof ApprovalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -65,13 +154,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/workflow/': {
+      id: '/workflow/'
+      path: '/'
+      fullPath: '/workflow/'
+      preLoaderRoute: typeof WorkflowIndexRouteImport
+      parentRoute: typeof WorkflowRoute
+    }
+    '/workflow/$contractorId': {
+      id: '/workflow/$contractorId'
+      path: '/$contractorId'
+      fullPath: '/workflow/$contractorId'
+      preLoaderRoute: typeof WorkflowContractorIdRouteImport
+      parentRoute: typeof WorkflowRoute
+    }
   }
 }
+
+interface WorkflowRouteChildren {
+  WorkflowContractorIdRoute: typeof WorkflowContractorIdRoute
+  WorkflowIndexRoute: typeof WorkflowIndexRoute
+}
+
+const WorkflowRouteChildren: WorkflowRouteChildren = {
+  WorkflowContractorIdRoute: WorkflowContractorIdRoute,
+  WorkflowIndexRoute: WorkflowIndexRoute,
+}
+
+const WorkflowRouteWithChildren = WorkflowRoute._addFileChildren(
+  WorkflowRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  ApprovalsRoute: ApprovalsRoute,
+  CompletedRoute: CompletedRoute,
+  WorkflowRoute: WorkflowRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
