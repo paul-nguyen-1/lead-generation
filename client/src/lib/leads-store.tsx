@@ -15,10 +15,22 @@ import type {
   LeadStatus,
 } from '#/data/leads'
 
+export interface CreateLeadInput {
+  businessName?: string
+  contactName?: string
+  email?: string
+  phone?: string
+  address?: string
+  website?: string
+  source?: string
+  notes?: string
+}
+
 interface LeadsContextValue {
   leads: Array<Lead>
   loading: boolean
   refetch: () => void
+  createLead: (input: CreateLeadInput) => Promise<void>
   assignLead: (leadId: string, contractorId: string) => Promise<void>
   toggleCriterion: (leadId: string, criterionId: string) => Promise<void>
   setContractorNotes: (leadId: string, notes: string) => Promise<void>
@@ -37,6 +49,8 @@ interface ApiLead {
   contactName: string | null
   email: string | null
   phone: string | null
+  address: string | null
+  website: string | null
   source: string | null
   notes: string
   status: LeadStatus
@@ -59,6 +73,8 @@ function mapLead(raw: ApiLead): Lead {
     company: raw.contactName ? (raw.businessName ?? '') : '',
     email: raw.email ?? '',
     phone: raw.phone ?? '',
+    address: raw.address ?? '',
+    website: raw.website ?? '',
     source: raw.source ?? '',
     notes: raw.notes,
     dateAdded: raw.createdAt,
@@ -114,6 +130,14 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     setLeads((current) =>
       current.map((lead) => (lead.id === leadId ? mapLead(updated) : lead)),
     )
+  }
+
+  async function createLead(input: CreateLeadInput) {
+    const created = await apiFetch<ApiLead>('/scraper/leads', {
+      method: 'POST',
+      body: input,
+    })
+    setLeads((current) => [...current, mapLead(created)])
   }
 
   async function assignLead(leadId: string, contractorId: string) {
@@ -184,6 +208,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     leads,
     loading,
     refetch,
+    createLead,
     assignLead,
     toggleCriterion,
     setContractorNotes,

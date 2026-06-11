@@ -30,6 +30,9 @@ export function defaultLeadCriteria(): Array<Criterion> {
 
 @Schema({ timestamps: true })
 export class Lead {
+  createdAt: Date;
+  updatedAt: Date;
+
   @Prop({ type: String, trim: true, default: null })
   businessName: string | null;
 
@@ -54,14 +57,8 @@ export class Lead {
   @Prop({ type: String, trim: true, default: '' })
   notes: string;
 
-  @Prop({ required: true })
-  sourceUrl: string;
-
-  @Prop({ type: Types.ObjectId, ref: 'ScrapeSource', required: true })
-  sourceId: Types.ObjectId;
-
-  @Prop({ type: Types.ObjectId, ref: 'ScrapeJob', required: true })
-  jobId: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  createdBy: Types.ObjectId;
 
   @Prop({ required: true, enum: LeadStatus, default: LeadStatus.New })
   status: LeadStatus;
@@ -95,6 +92,5 @@ export class Lead {
 }
 
 export const LeadSchema = SchemaFactory.createForClass(Lead);
-LeadSchema.index({ sourceId: 1, email: 1 });
-LeadSchema.index({ sourceId: 1, website: 1 });
+LeadSchema.index({ createdBy: 1 });
 LeadSchema.index({ status: 1 });

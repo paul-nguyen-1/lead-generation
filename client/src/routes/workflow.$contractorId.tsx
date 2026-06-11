@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useLeads } from '#/lib/leads-store'
+import { useLeads, type CreateLeadInput } from '#/lib/leads-store'
 import { useAuth } from '#/lib/auth-store'
 import { useContractors } from '#/lib/contractors'
 import RequireAuth from '#/components/RequireAuth'
 import { type Lead } from '#/data/leads'
 import { formatDate } from '#/lib/format'
+import { ApiError } from '#/lib/api'
 import StatusPill from '#/components/StatusPill'
 import CriteriaChecklist from '#/components/CriteriaChecklist'
 import LeadQueueList from '#/components/LeadQueueList'
@@ -33,21 +34,20 @@ function ContractorWorkflowPage() {
     : (user?.name ?? 'Contractor')
   const {
     leads,
+    createLead,
     toggleCriterion,
     setContractorNotes,
     submitForApproval,
     rejectLead,
   } = useLeads()
-  const queue = leads.filter(
-    (lead) =>
-      lead.assignedTo === contractorId &&
-      (lead.status === 'new' || lead.status === 'contractor_review'),
-  )
+  const history = leads
+    .filter((lead) => lead.assignedTo === contractorId)
+    .sort((a, b) => +new Date(a.dateAdded) - +new Date(b.dateAdded))
   const [selectedId, setSelectedId] = useState<string | null>(
-    queue[0]?.id ?? null,
+    history[0]?.id ?? null,
   )
   const selected =
-    queue.find((lead) => lead.id === selectedId) ?? queue[0] ?? null
+    history.find((lead) => lead.id === selectedId) ?? history[0] ?? null
 
   return (
     <main className="page-wrap px-4 py-12">
@@ -57,22 +57,28 @@ function ContractorWorkflowPage() {
         </Link>
         <p className="island-kicker mb-2 mt-3">Workflow</p>
         <h1 className="display-title text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl">
-          {contractorName} &mdash; Queue
+          {contractorName} &mdash; History
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-[var(--sea-ink-soft)]">
-          Review each lead against our criteria, leave notes for the team,
-          then submit it for approval.
+          Log new leads as you generate them, then review each one against
+          our criteria, leave notes for the team, and submit it for approval.
         </p>
       </section>
 
+      <div className="mb-6">
+        <AddLeadForm onCreate={createLead} />
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <div className="demo-panel">
-          <h2 className="demo-section-title mb-3">Queue ({queue.length})</h2>
+          <h2 className="demo-section-title mb-3">
+            History ({history.length})
+          </h2>
           <LeadQueueList
-            leads={queue}
+            leads={history}
             selectedId={selected?.id ?? null}
             onSelect={setSelectedId}
-            emptyMessage="No leads waiting on this contractor."
+            emptyMessage="No leads logged yet."
           />
         </div>
 
@@ -91,12 +97,186 @@ function ContractorWorkflowPage() {
             />
           ) : (
             <p className="demo-muted text-sm">
-              Select a lead from the queue to begin reviewing.
+              Select a lead from the history to begin reviewing.
             </p>
           )}
         </div>
       </div>
     </main>
+  )
+}
+
+function AddLeadForm({
+  onCreate,
+}: {
+  onCreate: (input: CreateLeadInput) => Promise<void>
+}) {
+  const emptyForm: CreateLeadInput = {
+    businessName: '',
+    contactName: '',
+    email: '',
+    phone: '',
+    address: '',
+    website: '',
+    source: '',
+    notes: '',
+  }
+  const [form, setForm] = useState<CreateLeadInput>(emptyForm)
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  function update<TKey extends keyof CreateLeadInput>(
+    key: TKey,
+    value: CreateLeadInput[TKey],
+  ) {
+    setForm((current) => ({ ...current, [key]: value }))
+  }
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError(null)
+
+    if (!form.businessName?.trim() && !form.contactName?.trim()) {
+      setError('Enter a business name or a contact name.')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await onCreate(form)
+      setForm(emptyForm)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to add lead')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="demo-panel">
+      <h2 className="demo-section-title mb-3">Add Lead</h2>
+      <form onSubmit={(event) => void handleSubmit(event)}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="lead-business-name" className="island-kicker mb-1 block">
+              Business Name
+            </label>
+            <input
+              id="lead-business-name"
+              type="text"
+              className="demo-input"
+              value={form.businessName}
+              onChange={(event) => update('businessName', event.target.value)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="lead-contact-name" className="island-kicker mb-1 block">
+              Contact Name
+            </label>
+            <input
+              id="lead-contact-name"
+              type="text"
+              className="demo-input"
+              value={form.contactName}
+              onChange={(event) => update('contactName', event.target.value)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="lead-email" className="island-kicker mb-1 block">
+              Email
+            </label>
+            <input
+              id="lead-email"
+              type="email"
+              className="demo-input"
+              value={form.email}
+              onChange={(event) => update('email', event.target.value)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="lead-phone" className="island-kicker mb-1 block">
+              Phone
+            </label>
+            <input
+              id="lead-phone"
+              type="tel"
+              className="demo-input"
+              value={form.phone}
+              onChange={(event) => update('phone', event.target.value)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="lead-address" className="island-kicker mb-1 block">
+              Address
+            </label>
+            <input
+              id="lead-address"
+              type="text"
+              className="demo-input"
+              value={form.address}
+              onChange={(event) => update('address', event.target.value)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="lead-website" className="island-kicker mb-1 block">
+              Website
+            </label>
+            <input
+              id="lead-website"
+              type="text"
+              className="demo-input"
+              value={form.website}
+              onChange={(event) => update('website', event.target.value)}
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label htmlFor="lead-source" className="island-kicker mb-1 block">
+              Source
+            </label>
+            <input
+              id="lead-source"
+              type="text"
+              placeholder="e.g. Referral, Cold call, Walk-in"
+              className="demo-input"
+              value={form.source}
+              onChange={(event) => update('source', event.target.value)}
+            />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label htmlFor="lead-notes" className="island-kicker mb-1 block">
+              Notes
+            </label>
+            <textarea
+              id="lead-notes"
+              className="demo-textarea"
+              value={form.notes}
+              onChange={(event) => update('notes', event.target.value)}
+            />
+          </div>
+        </div>
+
+        {error && (
+          <p className="mt-3 text-sm text-[#9f3030]" role="alert">
+            {error}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          className="demo-button mt-4"
+          disabled={submitting}
+        >
+          {submitting ? 'Adding…' : 'Add Lead'}
+        </button>
+      </form>
+    </div>
   )
 }
 
@@ -137,6 +317,18 @@ function LeadReviewDetail({
         <div>
           <dt className="island-kicker mb-1">Phone</dt>
           <dd className="m-0 text-sm text-[var(--sea-ink)]">{lead.phone}</dd>
+        </div>
+        <div>
+          <dt className="island-kicker mb-1">Address</dt>
+          <dd className="m-0 text-sm text-[var(--sea-ink)]">
+            {lead.address}
+          </dd>
+        </div>
+        <div>
+          <dt className="island-kicker mb-1">Website</dt>
+          <dd className="m-0 text-sm text-[var(--sea-ink)]">
+            {lead.website}
+          </dd>
         </div>
         <div>
           <dt className="island-kicker mb-1">Source</dt>

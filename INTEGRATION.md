@@ -65,16 +65,6 @@ JWT_REFRESH_EXPIRES_IN=
 SEED_ADMIN_EMAIL=
 SEED_ADMIN_PASSWORD=
 SEED_ADMIN_NAME=
-
-REDIS_HOST=
-REDIS_PORT=
-REDIS_PASSWORD=
-REDIS_TLS=
-
-SCRAPER_USER_AGENT=
-SCRAPER_DEFAULT_CRAWL_DELAY_MS=
-SCRAPER_REQUEST_TIMEOUT_MS=
-SCRAPER_WORKER_CONCURRENCY=
 ```
 
 ### `client/.env`
@@ -86,29 +76,6 @@ VITE_API_URL=
 `VITE_API_URL` should point at the running `service` instance (e.g.
 `http://localhost:3000` for local dev), and `CORS_ORIGIN` on the service
 should match the client's origin (e.g. `http://localhost:5173`).
-
-## Scraper Prerequisites
-
-The service's scraper module (`/scraper/*`) additionally requires:
-
-- A running **Redis** instance (`REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD`/`REDIS_TLS`)
-  for the BullMQ job queue.
-- **Playwright's Chromium binary** installed on the service host:
-  ```bash
-  npx playwright install chromium
-  ```
-
-These are only needed for `/scraper/sources/:id/run` to actually process
-jobs — the rest of the API works without them.
-
-### Redis hosting
-
-- **Local dev**: run Redis in Docker —
-  `docker run -d --name lead-gen-redis -p 6379:6379 --restart unless-stopped redis:7-alpine`.
-  Matches the default `REDIS_HOST=127.0.0.1` / `REDIS_PORT=6379` / `REDIS_TLS=false`.
-- **Always-on free hosting**: [Upstash](https://upstash.com) Redis — free
-  tier doesn't sleep, connects over TLS. Set `REDIS_HOST`/`REDIS_PORT`/`REDIS_PASSWORD`
-  to the values from your Upstash database and `REDIS_TLS=true`.
 
 ## API Docs
 

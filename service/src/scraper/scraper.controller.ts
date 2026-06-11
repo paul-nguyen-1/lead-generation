@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   Patch,
@@ -17,13 +16,11 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import { AssignLeadDto } from './dto/assign-lead.dto';
-import { CreateScrapeSourceDto } from './dto/create-scrape-source.dto';
-import { GenerateLeadsDto } from './dto/generate-leads.dto';
+import { CreateLeadDto } from './dto/create-lead.dto';
 import { QueryLeadsDto } from './dto/query-leads.dto';
 import { ToggleLeadCriterionDto } from './dto/toggle-lead-criterion.dto';
 import { UpdateLeadNotesDto } from './dto/update-lead-notes.dto';
 import { UpdateLeadStatusDto } from './dto/update-lead-status.dto';
-import { UpdateScrapeSourceDto } from './dto/update-scrape-source.dto';
 import { ScraperService } from './scraper.service';
 
 @ApiTags('scraper')
@@ -33,97 +30,35 @@ import { ScraperService } from './scraper.service';
 export class ScraperController {
   constructor(private readonly scraperService: ScraperService) {}
 
-  @Post('sources')
-  @Roles(Role.Admin)
-  @ApiOperation({ summary: 'Create a scrape source configuration' })
-  createSource(
-    @Body() dto: CreateScrapeSourceDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.scraperService.createSource(dto, user.id);
-  }
-
-  @Get('sources')
-  @Roles(Role.Admin)
-  @ApiOperation({ summary: 'List scrape source configurations' })
-  findAllSources() {
-    return this.scraperService.findAllSources();
-  }
-
-  @Get('sources/:id')
-  @Roles(Role.Admin)
-  @ApiOperation({ summary: 'Get a scrape source configuration' })
-  findSource(@Param('id') id: string) {
-    return this.scraperService.findSource(id);
-  }
-
-  @Patch('sources/:id')
-  @Roles(Role.Admin)
-  @ApiOperation({ summary: 'Update a scrape source configuration' })
-  updateSource(@Param('id') id: string, @Body() dto: UpdateScrapeSourceDto) {
-    return this.scraperService.updateSource(id, dto);
-  }
-
-  @Delete('sources/:id')
-  @Roles(Role.Admin)
-  @ApiOperation({ summary: 'Delete a scrape source configuration' })
-  removeSource(@Param('id') id: string) {
-    return this.scraperService.removeSource(id);
-  }
-
-  @Post('sources/:id/run')
-  @Roles(Role.Admin)
-  @ApiOperation({ summary: 'Enqueue a scrape run for a source' })
-  runSource(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.scraperService.runSource(id, user.id);
-  }
-
-  @Post('generate')
+  @Get('analytics')
   @Roles(Role.Admin)
   @ApiOperation({
-    summary:
-      'Run the scraper against the most recently created active source, capped at a number of new leads',
+    summary: 'Get lead-generation efficiency stats and rankings per contractor',
   })
-  generateLeads(
-    @Body() dto: GenerateLeadsDto,
+  getContractorAnalytics() {
+    return this.scraperService.getContractorAnalytics();
+  }
+
+  @Post('leads')
+  @Roles(Role.Admin, Role.Contractor)
+  @ApiOperation({ summary: 'Log a new lead' })
+  createLead(
+    @Body() dto: CreateLeadDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.scraperService.generateLeads(user.id, dto.limit);
-  }
-
-  @Get('generate/status')
-  @Roles(Role.Admin)
-  @ApiOperation({ summary: 'Get the status of the latest scrape job' })
-  getGenerationStatus() {
-    return this.scraperService.getGenerationStatus();
-  }
-
-  @Get('jobs')
-  @Roles(Role.Admin)
-  @ApiOperation({
-    summary: 'List scrape job runs, optionally filtered by source',
-  })
-  findJobs(@Query('sourceId') sourceId?: string) {
-    return this.scraperService.findJobs(sourceId);
-  }
-
-  @Get('jobs/:id')
-  @Roles(Role.Admin)
-  @ApiOperation({ summary: 'Get a scrape job run and its stats' })
-  findJob(@Param('id') id: string) {
-    return this.scraperService.findJob(id);
+    return this.scraperService.createLead(dto, user.id);
   }
 
   @Get('leads')
   @Roles(Role.Admin, Role.Contractor)
-  @ApiOperation({ summary: 'List scraped leads' })
+  @ApiOperation({ summary: 'List leads' })
   findLeads(@Query() query: QueryLeadsDto) {
     return this.scraperService.findLeads(query);
   }
 
   @Get('leads/:id')
   @Roles(Role.Admin, Role.Contractor)
-  @ApiOperation({ summary: 'Get a scraped lead' })
+  @ApiOperation({ summary: 'Get a lead' })
   findLead(@Param('id') id: string) {
     return this.scraperService.findLead(id);
   }

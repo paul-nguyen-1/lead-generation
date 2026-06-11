@@ -1,22 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import {
-  IsEnum,
-  IsInt,
-  IsMongoId,
-  IsOptional,
-  IsString,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { LeadStatus } from '../enums/lead-status.enum';
 
 export class QueryLeadsDto {
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsMongoId()
-  sourceId?: string;
-
   @ApiPropertyOptional({ enum: LeadStatus })
   @IsOptional()
   @IsEnum(LeadStatus)

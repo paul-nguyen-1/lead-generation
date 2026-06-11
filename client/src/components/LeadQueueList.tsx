@@ -13,7 +13,7 @@ export default function LeadQueueList({
   leads,
   selectedId,
   onSelect,
-  emptyMessage = 'No leads in this queue.',
+  emptyMessage = 'No leads to show.',
 }: LeadQueueListProps) {
   if (leads.length === 0) {
     return <p className="demo-muted text-sm">{emptyMessage}</p>

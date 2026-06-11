@@ -21,6 +21,8 @@ export interface Lead {
   company: string
   email: string
   phone: string
+  address: string
+  website: string
   source: string
   notes: string
   dateAdded: string

@@ -20,19 +20,17 @@ function WorkflowIndexPage() {
       <section className="mb-6">
         <p className="island-kicker mb-2">Workflow</p>
         <h1 className="display-title text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl">
-          Contractor Queues
+          Contractor History
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-[var(--sea-ink-soft)]">
-          Each contractor reviews their own assigned leads.
+          Each contractor logs and reviews the leads they've generated.
         </p>
       </section>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {contractors.map((contractor) => {
-          const queue = leads.filter(
-            (lead) =>
-              lead.assignedTo === contractor.id &&
-              (lead.status === 'new' || lead.status === 'contractor_review'),
+          const history = leads.filter(
+            (lead) => lead.assignedTo === contractor.id,
           )
           return (
             <Link
@@ -45,8 +43,8 @@ function WorkflowIndexPage() {
                 {contractor.name}
               </h2>
               <p className="m-0 mt-2 text-sm text-[var(--sea-ink-soft)]">
-                {queue.length} {queue.length === 1 ? 'lead' : 'leads'} in
-                queue
+                {history.length} {history.length === 1 ? 'lead' : 'leads'}{' '}
+                logged
               </p>
             </Link>
           )

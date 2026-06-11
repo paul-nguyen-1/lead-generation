@@ -1,184 +1,71 @@
-import { InjectQueue } from '@nestjs/bullmq';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Queue } from 'bullmq';
 import { Model, Types } from 'mongoose';
-import { CreateScrapeSourceDto } from './dto/create-scrape-source.dto';
+import { Role } from '../common/enums/role.enum';
+import { UsersService } from '../users/users.service';
+import { CreateLeadDto } from './dto/create-lead.dto';
 import { QueryLeadsDto } from './dto/query-leads.dto';
-import { UpdateScrapeSourceDto } from './dto/update-scrape-source.dto';
 import { AdminDecision } from './enums/admin-decision.enum';
 import { EmailStatus } from './enums/email-status.enum';
-import { JobStatus } from './enums/job-status.enum';
 import { LeadStatus } from './enums/lead-status.enum';
 import { Lead, LeadDocument } from './schemas/lead.schema';
-import { ScrapeJob, ScrapeJobDocument } from './schemas/scrape-job.schema';
-import {
-  ScrapeSource,
-  ScrapeSourceDocument,
-} from './schemas/scrape-source.schema';
-import {
-  DEFAULT_LEAD_GENERATION_LIMIT,
-  SCRAPE_JOB_OPTIONS,
-  SCRAPE_QUEUE,
-  SCRAPE_TASK,
-} from './scraper.constants';
-import { ScrapeTaskData } from './scraper.types';
 
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+const MS_PER_HOUR = 1000 * 60 * 60;
+const SEVEN_DAYS_MS = 7 * 24 * MS_PER_HOUR;
+
+export interface ContractorAnalytics {
+  id: string;
+  name: string;
+  rank: number;
+  totalLeads: number;
+  completedLeads: number;
+  rejectedLeads: number;
+  inProgressLeads: number;
+  approvalRate: number | null;
+  leadsLast7Days: number;
+  avgReviewHours: number | null;
+  efficiencyScore: number;
+}
+
 @Injectable()
 export class ScraperService {
   constructor(
-    @InjectModel(ScrapeSource.name)
-    private readonly sourceModel: Model<ScrapeSourceDocument>,
-    @InjectModel(ScrapeJob.name)
-    private readonly jobModel: Model<ScrapeJobDocument>,
     @InjectModel(Lead.name)
     private readonly leadModel: Model<LeadDocument>,
-    @InjectQueue(SCRAPE_QUEUE)
-    private readonly queue: Queue<ScrapeTaskData>,
+    private readonly usersService: UsersService,
   ) {}
 
-  createSource(dto: CreateScrapeSourceDto, userId: string) {
-    return this.sourceModel.create({
-      ...dto,
-      createdBy: new Types.ObjectId(userId),
-    });
-  }
-
-  findAllSources() {
-    return this.sourceModel.find().sort({ createdAt: -1 }).exec();
-  }
-
-  async findSource(id: string): Promise<ScrapeSourceDocument> {
-    const source = await this.sourceModel.findById(id).exec();
-    if (!source) throw new NotFoundException('Scrape source not found');
-    return source;
-  }
-
-  async updateSource(
-    id: string,
-    dto: UpdateScrapeSourceDto,
-  ): Promise<ScrapeSourceDocument> {
-    const source = await this.sourceModel
-      .findByIdAndUpdate(id, dto, { new: true })
-      .exec();
-    if (!source) throw new NotFoundException('Scrape source not found');
-    return source;
-  }
-
-  async removeSource(id: string): Promise<void> {
-    const result = await this.sourceModel.findByIdAndDelete(id).exec();
-    if (!result) throw new NotFoundException('Scrape source not found');
-  }
-
-  async runSource(
-    id: string,
-    userId: string,
-    leadLimit: number = DEFAULT_LEAD_GENERATION_LIMIT,
-  ): Promise<ScrapeJobDocument> {
-    const source = await this.findSource(id);
-    if (!source.isActive) {
-      throw new BadRequestException('Scrape source is not active');
-    }
-
-    const job = await this.jobModel.create({
-      sourceId: source._id,
-      status: JobStatus.Running,
-      startedAt: new Date(),
-      pendingTasks: source.startUrls.length,
-      leadLimit,
-      triggeredBy: new Types.ObjectId(userId),
-    });
-
-    for (const url of source.startUrls) {
-      const task: ScrapeTaskData = {
-        scrapeJobId: job._id.toString(),
-        sourceId: source._id.toString(),
-        url,
-        type: source.type,
-        depth: 0,
-      };
-      await this.queue.add(SCRAPE_TASK, task, SCRAPE_JOB_OPTIONS);
-    }
-
-    return job;
-  }
-
-  /**
-   * Kicks off a "Generate Leads" run against the most recently created
-   * active source, capped at `limit` new (non-duplicate) leads.
-   */
-  async generateLeads(
-    userId: string,
-    limit: number = DEFAULT_LEAD_GENERATION_LIMIT,
-  ): Promise<ScrapeJobDocument> {
-    const source = await this.sourceModel
-      .findOne({ isActive: true })
-      .sort({ createdAt: -1 })
-      .exec();
-    if (!source) {
+  async createLead(dto: CreateLeadDto, userId: string): Promise<LeadDocument> {
+    if (!dto.businessName && !dto.contactName) {
       throw new BadRequestException(
-        'No active scrape source is configured. Create one via POST /scraper/sources first.',
+        'At least one of businessName or contactName is required',
       );
     }
 
-    return this.runSource(source._id.toString(), userId, limit);
-  }
-
-  /** Status of the most recent "Generate Leads" run, for polling. */
-  async getGenerationStatus(): Promise<{
-    running: boolean;
-    jobId: string | null;
-    status: JobStatus | null;
-    leadsCreated: number;
-    leadsDuplicate: number;
-    leadLimit: number;
-  }> {
-    const job = await this.jobModel.findOne().sort({ createdAt: -1 }).exec();
-    if (!job) {
-      return {
-        running: false,
-        jobId: null,
-        status: null,
-        leadsCreated: 0,
-        leadsDuplicate: 0,
-        leadLimit: DEFAULT_LEAD_GENERATION_LIMIT,
-      };
-    }
-
-    return {
-      running: job.status === JobStatus.Running,
-      jobId: job._id.toString(),
-      status: job.status,
-      leadsCreated: job.stats.leadsCreated,
-      leadsDuplicate: job.stats.leadsDuplicate,
-      leadLimit: job.leadLimit,
-    };
-  }
-
-  findJobs(sourceId?: string) {
-    const filter: Record<string, unknown> = sourceId
-      ? { sourceId: new Types.ObjectId(sourceId) }
-      : {};
-    return this.jobModel.find(filter).sort({ createdAt: -1 }).exec();
-  }
-
-  async findJob(id: string): Promise<ScrapeJobDocument> {
-    const job = await this.jobModel.findById(id).exec();
-    if (!job) throw new NotFoundException('Scrape job not found');
-    return job;
+    return this.leadModel.create({
+      businessName: dto.businessName ?? null,
+      contactName: dto.contactName ?? null,
+      email: dto.email ?? null,
+      phone: dto.phone ?? null,
+      address: dto.address ?? null,
+      website: dto.website ?? null,
+      source: dto.source ?? null,
+      notes: dto.notes ?? '',
+      createdBy: new Types.ObjectId(userId),
+      assignedTo: new Types.ObjectId(userId),
+    });
   }
 
   async findLeads(query: QueryLeadsDto) {
-    const { sourceId, status, search, page = 1, limit = 20 } = query;
+    const { status, search, page = 1, limit = 20 } = query;
     const filter: Record<string, unknown> = {};
-    if (sourceId) filter.sourceId = new Types.ObjectId(sourceId);
     if (status) filter.status = status;
     if (search) {
       const regex = new RegExp(escapeRegExp(search), 'i');
@@ -323,5 +210,83 @@ export class ScraperService {
       .exec();
     if (!lead) throw new NotFoundException('Lead not found');
     return lead;
+  }
+
+  /**
+   * Per-contractor lead-generation efficiency, ranked for the home dashboard.
+   */
+  async getContractorAnalytics(): Promise<{
+    contractors: Array<ContractorAnalytics>;
+  }> {
+    const contractors = await this.usersService.findAll(Role.Contractor);
+    const contractorIds = contractors.map((contractor) => contractor._id);
+    const leads = await this.leadModel
+      .find({ createdBy: { $in: contractorIds } })
+      .exec();
+
+    const now = Date.now();
+
+    const stats = contractors.map((contractor) => {
+      const contractorLeads = leads.filter((lead) =>
+        lead.createdBy.equals(contractor._id),
+      );
+      const totalLeads = contractorLeads.length;
+      const completedLeads = contractorLeads.filter(
+        (lead) => lead.status === LeadStatus.Completed,
+      ).length;
+      const rejectedLeads = contractorLeads.filter(
+        (lead) => lead.status === LeadStatus.Rejected,
+      ).length;
+      const inProgressLeads = totalLeads - completedLeads - rejectedLeads;
+      const decided = completedLeads + rejectedLeads;
+      const approvalRate =
+        decided > 0 ? Math.round((completedLeads / decided) * 100) : null;
+      const leadsLast7Days = contractorLeads.filter(
+        (lead) => now - lead.createdAt.getTime() <= SEVEN_DAYS_MS,
+      ).length;
+
+      const reviewedLeads = contractorLeads.filter(
+        (lead) => lead.contractorReviewedAt,
+      );
+      const avgReviewHours =
+        reviewedLeads.length > 0
+          ? Math.round(
+              (reviewedLeads.reduce((sum, lead) => {
+                const hours =
+                  ((lead.contractorReviewedAt as Date).getTime() -
+                    lead.createdAt.getTime()) /
+                  MS_PER_HOUR;
+                return sum + hours;
+              }, 0) /
+                reviewedLeads.length) *
+                10,
+            ) / 10
+          : null;
+
+      const efficiencyScore =
+        completedLeads * 2 - rejectedLeads + leadsLast7Days;
+
+      return {
+        id: contractor._id.toString(),
+        name: contractor.name,
+        totalLeads,
+        completedLeads,
+        rejectedLeads,
+        inProgressLeads,
+        approvalRate,
+        leadsLast7Days,
+        avgReviewHours,
+        efficiencyScore,
+      };
+    });
+
+    stats.sort((a, b) => b.efficiencyScore - a.efficiencyScore);
+
+    return {
+      contractors: stats.map((entry, index) => ({
+        ...entry,
+        rank: index + 1,
+      })),
+    };
   }
 }
