@@ -26,6 +26,7 @@ export interface Lead {
   source: string
   notes: string
   dateAdded: string
+  dateUpdated: string
   status: LeadStatus
   assignedTo: string
   criteria: Array<Criterion>

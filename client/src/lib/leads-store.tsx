@@ -64,6 +64,7 @@ interface ApiLead {
   emailStatus: EmailStatus
   emailSentAt: string | null
   createdAt: string
+  updatedAt: string
 }
 
 function mapLead(raw: ApiLead): Lead {
@@ -78,6 +79,7 @@ function mapLead(raw: ApiLead): Lead {
     source: raw.source ?? '',
     notes: raw.notes,
     dateAdded: raw.createdAt,
+    dateUpdated: raw.updatedAt,
     status: raw.status,
     assignedTo: raw.assignedTo ?? '',
     criteria: raw.criteria,

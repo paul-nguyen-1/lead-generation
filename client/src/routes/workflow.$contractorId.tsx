@@ -5,7 +5,7 @@ import { useAuth } from '#/lib/auth-store'
 import { useContractors } from '#/lib/contractors'
 import RequireAuth from '#/components/RequireAuth'
 import { type Lead } from '#/data/leads'
-import { formatDate } from '#/lib/format'
+import { formatDate, formatDateTime } from '#/lib/format'
 import { ApiError } from '#/lib/api'
 import StatusPill from '#/components/StatusPill'
 import CriteriaChecklist from '#/components/CriteriaChecklist'
@@ -18,31 +18,36 @@ export const Route = createFileRoute('/workflow/$contractorId')({
       <RequireAuth
         allow={(user) => user.role === 'admin' || user.id === contractorId}
       >
-        <ContractorWorkflowPage />
+        <WorkflowRouter />
       </RequireAuth>
     )
   },
 })
 
-function ContractorWorkflowPage() {
-  const { contractorId } = Route.useParams()
+function WorkflowRouter() {
   const { user } = useAuth()
-  const isAdmin = user?.role === 'admin'
-  const { contractors } = useContractors({ enabled: isAdmin })
-  const contractorName = isAdmin
-    ? (contractors.find((c) => c.id === contractorId)?.name ?? 'Contractor')
-    : (user?.name ?? 'Contractor')
-  const {
-    leads,
-    createLead,
-    toggleCriterion,
-    setContractorNotes,
-    submitForApproval,
-    rejectLead,
-  } = useLeads()
-  const history = leads
-    .filter((lead) => lead.assignedTo === contractorId)
-    .sort((a, b) => +new Date(a.dateAdded) - +new Date(b.dateAdded))
+  return user?.role === 'admin' ? (
+    <AdminContractorHistoryPage />
+  ) : (
+    <ContractorWorkflowPage />
+  )
+}
+
+function sortByRecentlyUpdated(leads: Array<Lead>) {
+  return [...leads].sort(
+    (a, b) => +new Date(b.dateUpdated) - +new Date(a.dateUpdated),
+  )
+}
+
+function AdminContractorHistoryPage() {
+  const { contractorId } = Route.useParams()
+  const { contractors } = useContractors()
+  const contractorName =
+    contractors.find((c) => c.id === contractorId)?.name ?? 'Contractor'
+  const { leads } = useLeads()
+  const history = sortByRecentlyUpdated(
+    leads.filter((lead) => lead.assignedTo === contractorId),
+  )
   const [selectedId, setSelectedId] = useState<string | null>(
     history[0]?.id ?? null,
   )
@@ -56,6 +61,66 @@ function ContractorWorkflowPage() {
           &larr; All Contractors
         </Link>
         <p className="island-kicker mb-2 mt-3">Workflow</p>
+        <h1 className="display-title text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl">
+          {contractorName} &mdash; History
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm text-[var(--sea-ink-soft)]">
+          Every lead this contractor has logged, most recently updated first.
+        </p>
+      </section>
+
+      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+        <div className="demo-panel">
+          <h2 className="demo-section-title mb-3">
+            History ({history.length})
+          </h2>
+          <LeadQueueList
+            leads={history}
+            selectedId={selected?.id ?? null}
+            onSelect={setSelectedId}
+            emptyMessage="No leads logged yet."
+          />
+        </div>
+
+        <div className="demo-panel">
+          {selected ? (
+            <LeadDetailReadOnly lead={selected} />
+          ) : (
+            <p className="demo-muted text-sm">
+              Select a lead from the history to view details.
+            </p>
+          )}
+        </div>
+      </div>
+    </main>
+  )
+}
+
+function ContractorWorkflowPage() {
+  const { contractorId } = Route.useParams()
+  const { user } = useAuth()
+  const contractorName = user?.name ?? 'Contractor'
+  const {
+    leads,
+    createLead,
+    toggleCriterion,
+    setContractorNotes,
+    submitForApproval,
+    rejectLead,
+  } = useLeads()
+  const history = sortByRecentlyUpdated(
+    leads.filter((lead) => lead.assignedTo === contractorId),
+  )
+  const [selectedId, setSelectedId] = useState<string | null>(
+    history[0]?.id ?? null,
+  )
+  const selected =
+    history.find((lead) => lead.id === selectedId) ?? history[0] ?? null
+
+  return (
+    <main className="page-wrap px-4 py-12">
+      <section className="mb-6">
+        <p className="island-kicker mb-2">Workflow</p>
         <h1 className="display-title text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl">
           {contractorName} &mdash; History
         </h1>
@@ -280,18 +345,12 @@ function AddLeadForm({
   )
 }
 
-function LeadReviewDetail({
+function LeadDetail({
   lead,
-  onToggleCriterion,
-  onNotesChange,
-  onSubmit,
-  onReject,
+  children,
 }: {
   lead: Lead
-  onToggleCriterion: (criterionId: string) => void
-  onNotesChange: (notes: string) => void
-  onSubmit: () => void
-  onReject: () => void
+  children?: React.ReactNode
 }) {
   return (
     <div>
@@ -340,6 +399,12 @@ function LeadReviewDetail({
             {formatDate(lead.dateAdded)}
           </dd>
         </div>
+        <div>
+          <dt className="island-kicker mb-1">Last Updated</dt>
+          <dd className="m-0 text-sm text-[var(--sea-ink)]">
+            {formatDateTime(lead.dateUpdated)}
+          </dd>
+        </div>
       </dl>
 
       {lead.notes && (
@@ -351,6 +416,44 @@ function LeadReviewDetail({
         </div>
       )}
 
+      {children}
+    </div>
+  )
+}
+
+function LeadDetailReadOnly({ lead }: { lead: Lead }) {
+  return (
+    <LeadDetail lead={lead}>
+      <div className="mb-5">
+        <h3 className="demo-section-title mb-2">Review Criteria</h3>
+        <CriteriaChecklist criteria={lead.criteria} />
+      </div>
+
+      <div>
+        <h3 className="demo-section-title mb-2">Contractor Notes</h3>
+        <p className="demo-card m-0 text-sm text-[var(--sea-ink-soft)]">
+          {lead.contractorNotes || 'No notes yet.'}
+        </p>
+      </div>
+    </LeadDetail>
+  )
+}
+
+function LeadReviewDetail({
+  lead,
+  onToggleCriterion,
+  onNotesChange,
+  onSubmit,
+  onReject,
+}: {
+  lead: Lead
+  onToggleCriterion: (criterionId: string) => void
+  onNotesChange: (notes: string) => void
+  onSubmit: () => void
+  onReject: () => void
+}) {
+  return (
+    <LeadDetail lead={lead}>
       <div className="mb-5">
         <h3 className="demo-section-title mb-2">Review Criteria</h3>
         <CriteriaChecklist
@@ -382,6 +485,6 @@ function LeadReviewDetail({
           Reject Lead
         </button>
       </div>
-    </div>
+    </LeadDetail>
   )
 }

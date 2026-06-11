@@ -376,6 +376,7 @@ pre code {
 
 .demo-table-shell {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--line);
   border-radius: 1rem;
   background: color-mix(in oklab, var(--surface-strong) 78%, transparent);
@@ -398,10 +399,20 @@ pre code {
   background: color-mix(in oklab, var(--chip-bg) 88%, transparent);
   color: var(--sea-ink);
   font-weight: 700;
+  white-space: nowrap;
+  overflow-wrap: normal;
 }
 
 .demo-table tr:hover td {
   background: color-mix(in oklab, var(--lagoon) 8%, transparent);
+}
+
+@media (max-width: 640px) {
+  .demo-table th,
+  .demo-table td {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+  }
 }
 
 button,
