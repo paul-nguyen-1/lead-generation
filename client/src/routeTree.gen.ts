@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkflowRouteImport } from './routes/workflow'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ContractorsRouteImport } from './routes/contractors'
 import { Route as CompletedRouteImport } from './routes/completed'
 import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as AboutRouteImport } from './routes/about'
@@ -20,6 +22,16 @@ import { Route as WorkflowContractorIdRouteImport } from './routes/workflow.$con
 const WorkflowRoute = WorkflowRouteImport.update({
   id: '/workflow',
   path: '/workflow',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContractorsRoute = ContractorsRouteImport.update({
+  id: '/contractors',
+  path: '/contractors',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompletedRoute = CompletedRouteImport.update({
@@ -58,6 +70,8 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/approvals': typeof ApprovalsRoute
   '/completed': typeof CompletedRoute
+  '/contractors': typeof ContractorsRoute
+  '/login': typeof LoginRoute
   '/workflow': typeof WorkflowRouteWithChildren
   '/workflow/$contractorId': typeof WorkflowContractorIdRoute
   '/workflow/': typeof WorkflowIndexRoute
@@ -67,6 +81,8 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/approvals': typeof ApprovalsRoute
   '/completed': typeof CompletedRoute
+  '/contractors': typeof ContractorsRoute
+  '/login': typeof LoginRoute
   '/workflow/$contractorId': typeof WorkflowContractorIdRoute
   '/workflow': typeof WorkflowIndexRoute
 }
@@ -76,6 +92,8 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/approvals': typeof ApprovalsRoute
   '/completed': typeof CompletedRoute
+  '/contractors': typeof ContractorsRoute
+  '/login': typeof LoginRoute
   '/workflow': typeof WorkflowRouteWithChildren
   '/workflow/$contractorId': typeof WorkflowContractorIdRoute
   '/workflow/': typeof WorkflowIndexRoute
@@ -87,6 +105,8 @@ export interface FileRouteTypes {
     | '/about'
     | '/approvals'
     | '/completed'
+    | '/contractors'
+    | '/login'
     | '/workflow'
     | '/workflow/$contractorId'
     | '/workflow/'
@@ -96,6 +116,8 @@ export interface FileRouteTypes {
     | '/about'
     | '/approvals'
     | '/completed'
+    | '/contractors'
+    | '/login'
     | '/workflow/$contractorId'
     | '/workflow'
   id:
@@ -104,6 +126,8 @@ export interface FileRouteTypes {
     | '/about'
     | '/approvals'
     | '/completed'
+    | '/contractors'
+    | '/login'
     | '/workflow'
     | '/workflow/$contractorId'
     | '/workflow/'
@@ -114,6 +138,8 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   ApprovalsRoute: typeof ApprovalsRoute
   CompletedRoute: typeof CompletedRoute
+  ContractorsRoute: typeof ContractorsRoute
+  LoginRoute: typeof LoginRoute
   WorkflowRoute: typeof WorkflowRouteWithChildren
 }
 
@@ -124,6 +150,20 @@ declare module '@tanstack/react-router' {
       path: '/workflow'
       fullPath: '/workflow'
       preLoaderRoute: typeof WorkflowRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contractors': {
+      id: '/contractors'
+      path: '/contractors'
+      fullPath: '/contractors'
+      preLoaderRoute: typeof ContractorsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/completed': {
@@ -190,6 +230,8 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   ApprovalsRoute: ApprovalsRoute,
   CompletedRoute: CompletedRoute,
+  ContractorsRoute: ContractorsRoute,
+  LoginRoute: LoginRoute,
   WorkflowRoute: WorkflowRouteWithChildren,
 }
 export const routeTree = rootRouteImport

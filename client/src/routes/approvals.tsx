@@ -1,19 +1,27 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useLeads } from '#/lib/leads-store'
-import { CONTRACTORS, type Lead } from '#/data/leads'
+import { useContractors } from '#/lib/contractors'
+import { type User } from '#/lib/auth-store'
+import { type Lead } from '#/data/leads'
 import { formatDate, formatDateTime } from '#/lib/format'
 import StatusPill from '#/components/StatusPill'
 import CriteriaChecklist from '#/components/CriteriaChecklist'
 import LeadQueueList from '#/components/LeadQueueList'
+import RequireAuth from '#/components/RequireAuth'
 
 export const Route = createFileRoute('/approvals')({
-  component: ApprovalsPage,
+  component: () => (
+    <RequireAuth roles={['admin']}>
+      <ApprovalsPage />
+    </RequireAuth>
+  ),
 })
 
 function ApprovalsPage() {
   const { leads, setAdminNotes, approveLead, sendBackToContractor, rejectLead } =
     useLeads()
+  const { contractors } = useContractors()
   const queue = leads.filter((lead) => lead.status === 'pending_approval')
   const [selectedId, setSelectedId] = useState<string | null>(
     queue[0]?.id ?? null,
@@ -51,10 +59,13 @@ function ApprovalsPage() {
           {selected ? (
             <ApprovalDetail
               lead={selected}
-              onAdminNotesChange={(notes) => setAdminNotes(selected.id, notes)}
-              onApprove={() => approveLead(selected.id)}
-              onSendBack={() => sendBackToContractor(selected.id)}
-              onReject={() => rejectLead(selected.id)}
+              contractors={contractors}
+              onAdminNotesChange={(notes) =>
+                void setAdminNotes(selected.id, notes)
+              }
+              onApprove={() => void approveLead(selected.id)}
+              onSendBack={() => void sendBackToContractor(selected.id)}
+              onReject={() => void rejectLead(selected.id)}
             />
           ) : (
             <p className="demo-muted text-sm">
@@ -69,12 +80,14 @@ function ApprovalsPage() {
 
 function ApprovalDetail({
   lead,
+  contractors,
   onAdminNotesChange,
   onApprove,
   onSendBack,
   onReject,
 }: {
   lead: Lead
+  contractors: Array<User>
   onAdminNotesChange: (notes: string) => void
   onApprove: () => void
   onSendBack: () => void
@@ -118,8 +131,9 @@ function ApprovalDetail({
         <div>
           <dt className="island-kicker mb-1">Submitted By</dt>
           <dd className="m-0 text-sm text-[var(--sea-ink)]">
-            {CONTRACTORS.find((contractor) => contractor.id === lead.assignedTo)
-              ?.name ?? 'Unassigned'}
+            {contractors.find(
+              (contractor) => contractor.id === lead.assignedTo,
+            )?.name ?? 'Unassigned'}
           </dd>
         </div>
       </dl>

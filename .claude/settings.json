@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(kill %1)",
+      "Bash(jobs)",
+      "Bash(curl -s http://localhost:3000/api-json)",
+      "Bash(node -e ' *)",
+      "Bash(docker --version)",
+      "Read(//Applications/**)",
+      "Bash(docker info *)",
+      "Bash(open -a Docker)",
+      "Bash(docker run *)",
+      "Bash(docker exec *)",
+      "Bash(lsof -ti:3000)",
+      "Bash(xargs ps -p)",
+      "Bash(kill 68488)",
+      "Bash(kill 72088)",
+      "Bash(pkill -f \"nest start --watch\")",
+      "Bash(pkill -f \"node /Users/swaggy/Desktop/lead-generation/service\")",
+      "Bash(git stash *)",
+      "Bash(xxd)",
+      "Bash(ps -p 75079,75293 -o pid,ppid,command)",
+      "Bash(ps -p 75226 -o pid,ppid,command)",
+      "Bash(ps -ww -p 75226,75204,75293 -o pid,ppid,command)",
+      "Bash(kill 75204 75226 75293)",
+      "Bash(xargs ls -t)",
+      "Bash(curl -s -X POST http://localhost:3000/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"admin@example.com\",\"password\":\"ChangeMe123!\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"admin@example.com\",\"password\":\"ChangeMe123!\"}' -w \"\\\\nHTTP_STATUS:%{http_code}\\\\n\")",
+      "Bash(cat .env)",
+      "Bash(cat .env.local)",
+      "Bash(curl -s -o /dev/null -w \"frontend: %{http_code}\\\\n\" http://localhost:5173/login)"
+    ]
+  }
+}

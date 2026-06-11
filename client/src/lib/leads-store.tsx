@@ -5,124 +5,185 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { SEED_LEADS, type Lead } from '#/data/leads'
-
-const STORAGE_KEY = 'lead-pipeline:leads'
+import { apiFetch } from './api'
+import { useAuth } from './auth-store'
+import type {
+  AdminDecision,
+  Criterion,
+  EmailStatus,
+  Lead,
+  LeadStatus,
+} from '#/data/leads'
 
 interface LeadsContextValue {
   leads: Array<Lead>
-  assignLead: (leadId: string, contractorId: string) => void
-  toggleCriterion: (leadId: string, criterionId: string) => void
-  setContractorNotes: (leadId: string, notes: string) => void
-  setAdminNotes: (leadId: string, notes: string) => void
-  submitForApproval: (leadId: string) => void
-  sendBackToContractor: (leadId: string) => void
-  approveLead: (leadId: string) => void
-  rejectLead: (leadId: string) => void
-  resetSampleData: () => void
+  loading: boolean
+  refetch: () => void
+  assignLead: (leadId: string, contractorId: string) => Promise<void>
+  toggleCriterion: (leadId: string, criterionId: string) => Promise<void>
+  setContractorNotes: (leadId: string, notes: string) => Promise<void>
+  setAdminNotes: (leadId: string, notes: string) => Promise<void>
+  submitForApproval: (leadId: string) => Promise<void>
+  sendBackToContractor: (leadId: string) => Promise<void>
+  approveLead: (leadId: string) => Promise<void>
+  rejectLead: (leadId: string) => Promise<void>
 }
 
 const LeadsContext = createContext<LeadsContextValue | null>(null)
 
-function nowIso() {
-  return new Date().toISOString()
+interface ApiLead {
+  _id: string
+  businessName: string | null
+  contactName: string | null
+  email: string | null
+  phone: string | null
+  source: string | null
+  notes: string
+  status: LeadStatus
+  assignedTo: string | null
+  criteria: Array<Criterion>
+  contractorNotes: string
+  contractorReviewedAt: string | null
+  adminNotes: string
+  adminDecision: AdminDecision
+  adminReviewedAt: string | null
+  emailStatus: EmailStatus
+  emailSentAt: string | null
+  createdAt: string
+}
+
+function mapLead(raw: ApiLead): Lead {
+  return {
+    id: raw._id,
+    name: raw.contactName ?? raw.businessName ?? 'Unknown',
+    company: raw.contactName ? (raw.businessName ?? '') : '',
+    email: raw.email ?? '',
+    phone: raw.phone ?? '',
+    source: raw.source ?? '',
+    notes: raw.notes,
+    dateAdded: raw.createdAt,
+    status: raw.status,
+    assignedTo: raw.assignedTo ?? '',
+    criteria: raw.criteria,
+    contractorNotes: raw.contractorNotes,
+    contractorReviewedAt: raw.contractorReviewedAt,
+    adminNotes: raw.adminNotes,
+    adminDecision: raw.adminDecision,
+    adminReviewedAt: raw.adminReviewedAt,
+    emailStatus: raw.emailStatus,
+    emailSentAt: raw.emailSentAt,
+  }
 }
 
 export function LeadsProvider({ children }: { children: ReactNode }) {
-  const [leads, setLeads] = useState<Array<Lead>>(SEED_LEADS)
-  const [hydrated, setHydrated] = useState(false)
+  const { status } = useAuth()
+  const [leads, setLeads] = useState<Array<Lead>>([])
+  const [loading, setLoading] = useState(false)
+  const [refreshIndex, setRefreshIndex] = useState(0)
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY)
-      if (raw) {
-        setLeads(JSON.parse(raw) as Array<Lead>)
-      }
-    } catch {
-      // malformed or unavailable storage - keep the seed data
+    if (status !== 'authenticated') {
+      setLeads([])
+      setLoading(false)
+      return
     }
-    setHydrated(true)
-  }, [])
 
-  useEffect(() => {
-    if (!hydrated) return
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(leads))
-  }, [leads, hydrated])
+    let cancelled = false
+    setLoading(true)
+    apiFetch<{ items: Array<ApiLead> }>('/scraper/leads?limit=100')
+      .then((data) => {
+        if (!cancelled) setLeads(data.items.map(mapLead))
+      })
+      .catch(() => {
+        if (!cancelled) setLeads([])
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
 
-  function updateLead(leadId: string, updater: (lead: Lead) => Lead) {
+    return () => {
+      cancelled = true
+    }
+  }, [status, refreshIndex])
+
+  function refetch() {
+    setRefreshIndex((index) => index + 1)
+  }
+
+  function applyUpdate(leadId: string, updated: ApiLead) {
     setLeads((current) =>
-      current.map((lead) => (lead.id === leadId ? updater(lead) : lead)),
+      current.map((lead) => (lead.id === leadId ? mapLead(updated) : lead)),
     )
   }
 
-  function assignLead(leadId: string, contractorId: string) {
-    updateLead(leadId, (lead) => ({ ...lead, assignedTo: contractorId }))
+  async function assignLead(leadId: string, contractorId: string) {
+    const updated = await apiFetch<ApiLead>(
+      `/scraper/leads/${leadId}/assign`,
+      { method: 'PATCH', body: { userId: contractorId } },
+    )
+    applyUpdate(leadId, updated)
   }
 
-  function toggleCriterion(leadId: string, criterionId: string) {
-    updateLead(leadId, (lead) => ({
-      ...lead,
-      status: lead.status === 'new' ? 'contractor_review' : lead.status,
-      criteria: lead.criteria.map((criterion) =>
-        criterion.id === criterionId
-          ? { ...criterion, met: !criterion.met }
-          : criterion,
-      ),
-    }))
+  async function toggleCriterion(leadId: string, criterionId: string) {
+    const updated = await apiFetch<ApiLead>(
+      `/scraper/leads/${leadId}/criteria`,
+      { method: 'PATCH', body: { criterionId } },
+    )
+    applyUpdate(leadId, updated)
   }
 
-  function setContractorNotes(leadId: string, notes: string) {
-    updateLead(leadId, (lead) => ({
-      ...lead,
-      status: lead.status === 'new' ? 'contractor_review' : lead.status,
-      contractorNotes: notes,
-    }))
+  async function setContractorNotes(leadId: string, notes: string) {
+    const updated = await apiFetch<ApiLead>(
+      `/scraper/leads/${leadId}/contractor-notes`,
+      { method: 'PATCH', body: { notes } },
+    )
+    applyUpdate(leadId, updated)
   }
 
-  function setAdminNotes(leadId: string, notes: string) {
-    updateLead(leadId, (lead) => ({ ...lead, adminNotes: notes }))
+  async function setAdminNotes(leadId: string, notes: string) {
+    const updated = await apiFetch<ApiLead>(
+      `/scraper/leads/${leadId}/admin-notes`,
+      { method: 'PATCH', body: { notes } },
+    )
+    applyUpdate(leadId, updated)
   }
 
-  function submitForApproval(leadId: string) {
-    updateLead(leadId, (lead) => ({
-      ...lead,
-      status: 'pending_approval',
-      contractorReviewedAt: nowIso(),
-    }))
+  async function submitForApproval(leadId: string) {
+    const updated = await apiFetch<ApiLead>(
+      `/scraper/leads/${leadId}/submit`,
+      { method: 'PATCH' },
+    )
+    applyUpdate(leadId, updated)
   }
 
-  function sendBackToContractor(leadId: string) {
-    updateLead(leadId, (lead) => ({ ...lead, status: 'contractor_review' }))
+  async function sendBackToContractor(leadId: string) {
+    const updated = await apiFetch<ApiLead>(
+      `/scraper/leads/${leadId}/send-back`,
+      { method: 'PATCH' },
+    )
+    applyUpdate(leadId, updated)
   }
 
-  function approveLead(leadId: string) {
-    const timestamp = nowIso()
-    updateLead(leadId, (lead) => ({
-      ...lead,
-      status: 'completed',
-      adminDecision: 'approved',
-      adminReviewedAt: timestamp,
-      emailStatus: 'sent',
-      emailSentAt: timestamp,
-    }))
+  async function approveLead(leadId: string) {
+    const updated = await apiFetch<ApiLead>(
+      `/scraper/leads/${leadId}/approve`,
+      { method: 'PATCH' },
+    )
+    applyUpdate(leadId, updated)
   }
 
-  function rejectLead(leadId: string) {
-    updateLead(leadId, (lead) => ({
-      ...lead,
-      status: 'rejected',
-      adminDecision: 'rejected',
-      adminReviewedAt: nowIso(),
-    }))
-  }
-
-  function resetSampleData() {
-    window.localStorage.removeItem(STORAGE_KEY)
-    setLeads(SEED_LEADS)
+  async function rejectLead(leadId: string) {
+    const updated = await apiFetch<ApiLead>(
+      `/scraper/leads/${leadId}/reject`,
+      { method: 'PATCH' },
+    )
+    applyUpdate(leadId, updated)
   }
 
   const value: LeadsContextValue = {
     leads,
+    loading,
+    refetch,
     assignLead,
     toggleCriterion,
     setContractorNotes,
@@ -131,7 +192,6 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     sendBackToContractor,
     approveLead,
     rejectLead,
-    resetSampleData,
   }
 
   return (

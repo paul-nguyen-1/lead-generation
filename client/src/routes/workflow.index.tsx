@@ -1,13 +1,19 @@
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { useLeads } from '#/lib/leads-store'
-import { CONTRACTORS } from '#/data/leads'
+import { useContractors } from '#/lib/contractors'
+import RequireAuth from '#/components/RequireAuth'
 
 export const Route = createFileRoute('/workflow/')({
-  component: WorkflowIndexPage,
+  component: () => (
+    <RequireAuth roles={['admin']}>
+      <WorkflowIndexPage />
+    </RequireAuth>
+  ),
 })
 
 function WorkflowIndexPage() {
   const { leads } = useLeads()
+  const { contractors } = useContractors()
 
   return (
     <main className="page-wrap px-4 py-12">
@@ -22,7 +28,7 @@ function WorkflowIndexPage() {
       </section>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {CONTRACTORS.map((contractor) => {
+        {contractors.map((contractor) => {
           const queue = leads.filter(
             (lead) =>
               lead.assignedTo === contractor.id &&

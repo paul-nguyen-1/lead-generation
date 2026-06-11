@@ -1,11 +1,19 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useLeads } from '#/lib/leads-store'
-import { CONTRACTORS, STATUS_META, type Lead, type LeadStatus } from '#/data/leads'
+import { useContractors } from '#/lib/contractors'
+import { STATUS_META, type Lead, type LeadStatus } from '#/data/leads'
 import { formatDate } from '#/lib/format'
 import StatusPill, { Pill } from '#/components/StatusPill'
+import RequireAuth from '#/components/RequireAuth'
 
-export const Route = createFileRoute('/')({ component: App })
+export const Route = createFileRoute('/')({
+  component: () => (
+    <RequireAuth roles={['admin']}>
+      <App />
+    </RequireAuth>
+  ),
+})
 
 const STATUS_ORDER: Array<LeadStatus> = [
   'new',
@@ -30,7 +38,8 @@ function countByStatus(leads: Array<Lead>): Record<LeadStatus, number> {
 }
 
 function App() {
-  const { leads, assignLead, resetSampleData } = useLeads()
+  const { leads, assignLead } = useLeads()
+  const { contractors } = useContractors()
   const [filter, setFilter] = useState<LeadStatus | 'all'>('all')
 
   const counts = countByStatus(leads)
@@ -81,13 +90,6 @@ function App() {
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              className="demo-button demo-button-secondary"
-              onClick={resetSampleData}
-            >
-              Reset Sample Data
-            </button>
           </div>
         </div>
 
@@ -135,10 +137,13 @@ function App() {
                       className="demo-select demo-input-fit"
                       value={lead.assignedTo}
                       onChange={(event) =>
-                        assignLead(lead.id, event.target.value)
+                        void assignLead(lead.id, event.target.value)
                       }
                     >
-                      {CONTRACTORS.map((contractor) => (
+                      {!contractors.some((c) => c.id === lead.assignedTo) && (
+                        <option value={lead.assignedTo}>Unassigned</option>
+                      )}
+                      {contractors.map((contractor) => (
                         <option key={contractor.id} value={contractor.id}>
                           {contractor.name}
                         </option>
