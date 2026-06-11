@@ -1,98 +1,207 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Lead Generation Service
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS backend for the lead generation platform. It provides JWT-based
+authentication with role-based access control (RBAC), user management, and a
+scraper module that discovers leads from business directories and company
+websites.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Tech Stack
 
-## Description
+- **NestJS 11** (Express)
+- **MongoDB** via Mongoose
+- **JWT auth** (`@nestjs/jwt`, `passport-jwt`) with access + refresh tokens
+- **RBAC** via a custom `Roles` decorator + `RolesGuard`
+- **BullMQ + Redis** for the scraper job queue
+- **axios + cheerio** for static page fetching/parsing, with **Playwright**
+  (Chromium) as a headless-browser fallback for JS-rendered pages
+- **robots-parser** for robots.txt compliance
+- **Swagger / OpenAPI** docs
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Prerequisites
 
-## Project setup
+- Node.js (v20+ recommended)
+- A MongoDB instance (local or Atlas)
+- A Redis instance (required for the scraper job queue)
+- Playwright's Chromium browser binary:
 
-```bash
-$ npm install
-```
+  ```bash
+  npx playwright install chromium
+  ```
 
-## Compile and run the project
+## Getting Started
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
+cp .env.example .env   # then fill in the values for your environment
+npm run start:dev
 ```
 
-## Run tests
+The API listens on `http://localhost:<PORT>` (default `3000`), and Swagger
+docs are available at `http://localhost:<PORT>/api`.
 
-```bash
-# unit tests
-$ npm run test
+## Environment Variables
 
-# e2e tests
-$ npm run test:e2e
+Copy `.env.example` to `.env` and fill in the values below. **Never commit a
+`.env` file with real secrets.**
 
-# test coverage
-$ npm run test:cov
+| Key | Description |
+| --- | --- |
+| `PORT` | Port the HTTP server listens on |
+| `MONGODB_URI` | MongoDB connection string |
+| `CORS_ORIGIN` | Allowed origin for CORS (the client's URL) |
+| `JWT_ACCESS_SECRET` | Signing secret for access tokens |
+| `JWT_ACCESS_EXPIRES_IN` | Access token lifetime (e.g. `15m`) |
+| `JWT_REFRESH_SECRET` | Signing secret for refresh tokens |
+| `JWT_REFRESH_EXPIRES_IN` | Refresh token lifetime (e.g. `7d`) |
+| `SEED_ADMIN_EMAIL` | Email for the admin user seeded on first boot |
+| `SEED_ADMIN_PASSWORD` | Password for the seeded admin user |
+| `SEED_ADMIN_NAME` | Display name for the seeded admin user |
+| `REDIS_HOST` | Redis host used by BullMQ |
+| `REDIS_PORT` | Redis port used by BullMQ |
+| `REDIS_PASSWORD` | Redis password (leave blank if none) |
+| `REDIS_TLS` | Set to `true` for TLS-only providers (e.g. Upstash) |
+| `SCRAPER_USER_AGENT` | User-Agent string sent with scrape requests and checked against `robots.txt` |
+| `SCRAPER_DEFAULT_CRAWL_DELAY_MS` | Fallback per-domain delay (ms) when `robots.txt` has no `Crawl-delay` |
+| `SCRAPER_REQUEST_TIMEOUT_MS` | Timeout (ms) for page fetches |
+| `SCRAPER_WORKER_CONCURRENCY` | Number of scrape tasks processed concurrently per worker |
+
+## Available Scripts
+
+| Script | Description |
+| --- | --- |
+| `npm run start:dev` | Start in watch mode |
+| `npm run start:prod` | Run the compiled app (`dist/main.js`) |
+| `npm run build` | Compile to `dist/` |
+| `npm run lint` | Run ESLint with `--fix` |
+| `npm run test` | Run unit tests (Jest) |
+| `npm run test:e2e` | Run end-to-end tests |
+| `npm run test:cov` | Run tests with coverage |
+
+## Modules
+
+### Auth (`/auth`)
+
+| Method | Path | Access | Description |
+| --- | --- | --- | --- |
+| POST | `/auth/login` | Public | Log in with email/password, returns access + refresh tokens |
+| POST | `/auth/register` | Admin | Register a new user |
+| POST | `/auth/refresh` | Public | Exchange a refresh token for new tokens |
+| POST | `/auth/logout` | Authenticated | Invalidate the current session |
+| GET | `/auth/me` | Authenticated | Get the current authenticated user |
+
+Roles are defined in `src/common/enums/role.enum.ts`: `Admin`, `Contractor`.
+
+### Users (`/users`)
+
+| Method | Path | Access | Description |
+| --- | --- | --- | --- |
+| GET | `/users` | Admin | List users, optionally filtered by `role` |
+| PATCH | `/users/:id/status` | Admin | Activate/deactivate a user account |
+
+### Scraper (`/scraper`)
+
+Discovers and tracks leads from configured sources. Each **source**
+describes where to crawl, a **job** is one crawl run of a source, and a
+**lead** is a record extracted during a job.
+
+| Method | Path | Access | Description |
+| --- | --- | --- | --- |
+| POST | `/scraper/sources` | Admin | Create a scrape source |
+| GET | `/scraper/sources` | Admin | List scrape sources |
+| GET | `/scraper/sources/:id` | Admin | Get a scrape source |
+| PATCH | `/scraper/sources/:id` | Admin | Update a scrape source |
+| DELETE | `/scraper/sources/:id` | Admin | Delete a scrape source |
+| POST | `/scraper/sources/:id/run` | Admin | Enqueue a crawl run for a source |
+| GET | `/scraper/jobs` | Admin | List job runs (optionally filtered by `sourceId`) |
+| GET | `/scraper/jobs/:id` | Admin | Get a job run and its stats |
+| GET | `/scraper/leads` | Admin, Contractor | List leads (filterable by `sourceId`, `status`, `search`, paginated) |
+| GET | `/scraper/leads/:id` | Admin, Contractor | Get a lead |
+| PATCH | `/scraper/leads/:id/status` | Admin, Contractor | Update a lead's pipeline status |
+| PATCH | `/scraper/leads/:id/assign` | Admin | Assign a lead to a user |
+
+#### Source types
+
+`type` on a `ScrapeSource` is one of:
+
+- **`directory`** — a listing page (e.g. a business directory) is scraped
+  using CSS `selectors` to pull out one entry per listing.
+- **`company-site`** — a company's own website is crawled looking for
+  contact pages, and contact details are extracted heuristically (mailto/tel
+  links, email/phone regex, page title/og:site_name).
+
+#### Creating a directory source
+
+```json
+{
+  "name": "Local Contractor Directory",
+  "type": "directory",
+  "startUrls": ["https://example.com/directory"],
+  "allowedDomains": ["example.com"],
+  "selectors": {
+    "listItem": ".listing",
+    "name": ".listing-name",
+    "phone": ".listing-phone",
+    "address": ".listing-address",
+    "website": "a.listing-website",
+    "email": ".listing-email",
+    "contactName": ".listing-contact",
+    "nextPage": "a.next-page"
+  },
+  "maxDepth": 2,
+  "isActive": true
+}
 ```
 
-## Deployment
+#### Creating a company-site source
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+```json
+{
+  "name": "Cold Outreach List",
+  "type": "company-site",
+  "startUrls": ["https://example-company.com"],
+  "allowedDomains": ["example-company.com"],
+  "contactPaths": ["/contact", "/contact-us", "/about"],
+  "maxDepth": 1
+}
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+#### Job and lead status
 
-## Resources
+- **Job status** (`src/scraper/enums/job-status.enum.ts`): `running`,
+  `completed`, `failed`.
+- **Lead status** (`src/scraper/enums/lead-status.enum.ts`): `new`,
+  `reviewed`, `contacted`, `qualified`, `rejected`. Leads are deduplicated
+  per source by email/website.
 
-Check out a few resources that may come in handy when working with NestJS:
+#### How a run works
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+1. `POST /scraper/sources/:id/run` enqueues a `ScrapeJob` and the source's
+   `startUrls` onto the BullMQ `scrape` queue.
+2. `ScrapeProcessor` (a BullMQ `WorkerHost`) pulls tasks off the queue. For
+   each URL it:
+   - Checks `robots.txt` via `RobotsService` and skips disallowed URLs.
+   - Waits its turn for that domain via `DomainThrottleService`, which
+     enforces the crawl delay from `robots.txt` (or
+     `SCRAPER_DEFAULT_CRAWL_DELAY_MS`) using Redis.
+   - Fetches the page via `FetcherService` — a static `axios` request first,
+     falling back to a headless Chromium page (Playwright) if the static
+     response looks like an empty client-rendered shell.
+   - Extracts data with `ExtractorService` (directory listings via CSS
+     selectors, or contact info via mailto/tel/regex heuristics).
+   - Upserts `Lead` documents and enqueues any newly discovered URLs (next
+     page, contact pages, etc.) up to `maxDepth`.
+3. Job stats (pages visited, leads found, errors) are tracked on the
+   `ScrapeJob` document, which is marked `completed` or `failed` once the
+   job's tasks finish.
 
-## Support
+#### Running the scraper locally
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+1. Start Redis (e.g. `redis-server`, or via Docker) and make sure
+   `REDIS_HOST`/`REDIS_PORT` in `.env` point to it.
+2. Install the Playwright browser binary: `npx playwright install chromium`.
+3. Set a real, identifying `SCRAPER_USER_AGENT` (include a contact URL/email)
+   — this is checked against `robots.txt` and sent on every request.
+4. Create a source with `POST /scraper/sources`, then trigger a run with
+   `POST /scraper/sources/:id/run`.
+5. Poll `GET /scraper/jobs/:id` for progress and `GET /scraper/leads` for
+   results.
