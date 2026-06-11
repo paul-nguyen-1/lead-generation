@@ -58,6 +58,10 @@ export class ScrapeProcessor extends WorkerHost {
         return;
       }
 
+      if (await this.hasReachedLimit(scrapeJobId)) {
+        return;
+      }
+
       const allowed = await this.robotsService.isAllowed(url);
       if (!allowed) {
         await this.jobModel.findByIdAndUpdate(scrapeJobId, {
@@ -103,21 +107,22 @@ export class ScrapeProcessor extends WorkerHost {
       url,
       source.selectors,
     );
+
     for (const listing of listings) {
-      await this.upsertLead(
+      if (await this.hasReachedLimit(scrapeJobId)) {
+        return;
+      }
+      const result = await this.upsertLead(
         listing,
         url,
         source._id,
         new Types.ObjectId(scrapeJobId),
+        source.name,
       );
-    }
-    if (listings.length > 0) {
-      await this.jobModel.findByIdAndUpdate(scrapeJobId, {
-        $inc: { 'stats.leadsFound': listings.length },
-      });
+      await this.recordLeadResult(scrapeJobId, result);
     }
 
-    if (depth < source.maxDepth) {
+    if (depth < source.maxDepth && !(await this.hasReachedLimit(scrapeJobId))) {
       const nextPage = this.extractorService.findLink(
         html,
         url,
@@ -147,18 +152,17 @@ export class ScrapeProcessor extends WorkerHost {
   ): Promise<void> {
     const contact = this.extractorService.extractContactInfo(html, url);
     if (contact.email || contact.phone) {
-      await this.upsertLead(
+      const result = await this.upsertLead(
         contact,
         url,
         source._id,
         new Types.ObjectId(scrapeJobId),
+        source.name,
       );
-      await this.jobModel.findByIdAndUpdate(scrapeJobId, {
-        $inc: { 'stats.leadsFound': 1 },
-      });
+      await this.recordLeadResult(scrapeJobId, result);
     }
 
-    if (depth < source.maxDepth) {
+    if (depth < source.maxDepth && !(await this.hasReachedLimit(scrapeJobId))) {
       const links = this.extractorService.findContactPageLinks(
         html,
         url,
@@ -186,7 +190,8 @@ export class ScrapeProcessor extends WorkerHost {
     sourceUrl: string,
     sourceId: Types.ObjectId,
     jobId: Types.ObjectId,
-  ): Promise<void> {
+    sourceName: string,
+  ): Promise<'created' | 'duplicate'> {
     const filter = this.buildLeadFilter(data, sourceId);
     const fields = Object.fromEntries(
       Object.entries(data).filter(([, value]) => value !== null),
@@ -198,19 +203,49 @@ export class ScrapeProcessor extends WorkerHost {
         sourceId,
         jobId,
         sourceUrl,
+        source: sourceName,
         status: LeadStatus.New,
       });
-      return;
+      return 'created';
     }
 
-    await this.leadModel.updateOne(
+    const result = await this.leadModel.updateOne(
       filter,
       {
-        $setOnInsert: { sourceId, jobId, sourceUrl, status: LeadStatus.New },
+        $setOnInsert: {
+          sourceId,
+          jobId,
+          sourceUrl,
+          source: sourceName,
+          status: LeadStatus.New,
+        },
         $set: fields,
       },
-      { upsert: true },
+      { upsert: true, setDefaultsOnInsert: true },
     );
+
+    return result.upsertedCount > 0 ? 'created' : 'duplicate';
+  }
+
+  /** Whether this job has already created enough new leads to stop. */
+  private async hasReachedLimit(scrapeJobId: string): Promise<boolean> {
+    const job = await this.jobModel
+      .findById(scrapeJobId)
+      .select('stats.leadsCreated leadLimit')
+      .exec();
+    return !job || job.stats.leadsCreated >= job.leadLimit;
+  }
+
+  /** Records whether an upserted lead was newly created or a duplicate. */
+  private async recordLeadResult(
+    scrapeJobId: string,
+    result: 'created' | 'duplicate',
+  ): Promise<void> {
+    const field =
+      result === 'created' ? 'stats.leadsCreated' : 'stats.leadsDuplicate';
+    await this.jobModel.findByIdAndUpdate(scrapeJobId, {
+      $inc: { [field]: 1, 'stats.leadsFound': 1 },
+    });
   }
 
   private buildLeadFilter(

@@ -1,7 +1,7 @@
 export enum LeadStatus {
   New = 'new',
-  Reviewed = 'reviewed',
-  Contacted = 'contacted',
-  Qualified = 'qualified',
+  ContractorReview = 'contractor_review',
+  PendingApproval = 'pending_approval',
+  Completed = 'completed',
   Rejected = 'rejected',
 }

@@ -81,13 +81,13 @@ function ContractorWorkflowPage() {
             <LeadReviewDetail
               lead={selected}
               onToggleCriterion={(criterionId) =>
-                toggleCriterion(selected.id, criterionId)
+                void toggleCriterion(selected.id, criterionId)
               }
               onNotesChange={(notes) =>
-                setContractorNotes(selected.id, notes)
+                void setContractorNotes(selected.id, notes)
               }
-              onSubmit={() => submitForApproval(selected.id)}
-              onReject={() => rejectLead(selected.id)}
+              onSubmit={() => void submitForApproval(selected.id)}
+              onReject={() => void rejectLead(selected.id)}
             />
           ) : (
             <p className="demo-muted text-sm">

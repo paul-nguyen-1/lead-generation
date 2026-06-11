@@ -1,8 +1,32 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import { DEFAULT_LEAD_CRITERIA } from '../scraper.constants';
+import { AdminDecision } from '../enums/admin-decision.enum';
+import { EmailStatus } from '../enums/email-status.enum';
 import { LeadStatus } from '../enums/lead-status.enum';
 
 export type LeadDocument = HydratedDocument<Lead>;
+
+@Schema({ _id: false })
+export class Criterion {
+  @Prop({ required: true })
+  id: string;
+
+  @Prop({ required: true })
+  label: string;
+
+  @Prop({ default: false })
+  met: boolean;
+}
+
+export const CriterionSchema = SchemaFactory.createForClass(Criterion);
+
+export function defaultLeadCriteria(): Array<Criterion> {
+  return DEFAULT_LEAD_CRITERIA.map((criterion) => ({
+    ...criterion,
+    met: false,
+  }));
+}
 
 @Schema({ timestamps: true })
 export class Lead {
@@ -24,6 +48,12 @@ export class Lead {
   @Prop({ type: String, trim: true, default: null })
   contactName: string | null;
 
+  @Prop({ type: String, trim: true, default: null })
+  source: string | null;
+
+  @Prop({ type: String, trim: true, default: '' })
+  notes: string;
+
   @Prop({ required: true })
   sourceUrl: string;
 
@@ -38,6 +68,30 @@ export class Lead {
 
   @Prop({ type: Types.ObjectId, ref: 'User', default: null })
   assignedTo: Types.ObjectId | null;
+
+  @Prop({ type: [CriterionSchema], default: defaultLeadCriteria })
+  criteria: Array<Criterion>;
+
+  @Prop({ type: String, default: '' })
+  contractorNotes: string;
+
+  @Prop({ type: Date, default: null })
+  contractorReviewedAt: Date | null;
+
+  @Prop({ type: String, default: '' })
+  adminNotes: string;
+
+  @Prop({ type: String, enum: AdminDecision, default: null })
+  adminDecision: AdminDecision | null;
+
+  @Prop({ type: Date, default: null })
+  adminReviewedAt: Date | null;
+
+  @Prop({ type: String, enum: EmailStatus, default: EmailStatus.NotSent })
+  emailStatus: EmailStatus;
+
+  @Prop({ type: Date, default: null })
+  emailSentAt: Date | null;
 }
 
 export const LeadSchema = SchemaFactory.createForClass(Lead);

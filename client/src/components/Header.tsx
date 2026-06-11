@@ -1,10 +1,30 @@
 import { Link, useNavigate } from '@tanstack/react-router'
+import { useEffect, useRef } from 'react'
+import { Pill } from './StatusPill'
 import ThemeToggle from './ThemeToggle'
 import { useAuth } from '#/lib/auth-store'
+import { useLeadGeneration } from '#/lib/lead-generation'
+import { useLeads } from '#/lib/leads-store'
 
 export default function Header() {
   const { status, user, logout } = useAuth()
   const navigate = useNavigate()
+  const { refetch } = useLeads()
+  const isAdmin = status === 'authenticated' && user?.role === 'admin'
+  const {
+    status: generation,
+    error: generationError,
+    starting,
+    generate,
+  } = useLeadGeneration({ enabled: isAdmin })
+
+  const wasRunningRef = useRef(false)
+  useEffect(() => {
+    if (wasRunningRef.current && generation && !generation.running) {
+      refetch()
+    }
+    wasRunningRef.current = generation?.running ?? false
+  }, [generation, refetch])
 
   function handleLogout() {
     logout()
@@ -78,6 +98,35 @@ export default function Header() {
         )}
 
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+          {isAdmin && (
+            <>
+              <Pill
+                label={
+                  generationError
+                    ? 'Error'
+                    : generation?.running
+                      ? `Generating (${generation.leadsCreated.toString()}/${generation.leadLimit.toString()})`
+                      : 'Inactive'
+                }
+                color={
+                  generationError
+                    ? '#dc2626'
+                    : generation?.running
+                      ? '#d97706'
+                      : '#9ca3af'
+                }
+                title={generationError ?? undefined}
+              />
+              <button
+                type="button"
+                className="demo-button demo-button-secondary"
+                onClick={() => void generate()}
+                disabled={starting || generation?.running}
+              >
+                Generate Leads
+              </button>
+            </>
+          )}
           <ThemeToggle />
           {status === 'authenticated' && user && (
             <button

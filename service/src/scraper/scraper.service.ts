@@ -10,6 +10,8 @@ import { Model, Types } from 'mongoose';
 import { CreateScrapeSourceDto } from './dto/create-scrape-source.dto';
 import { QueryLeadsDto } from './dto/query-leads.dto';
 import { UpdateScrapeSourceDto } from './dto/update-scrape-source.dto';
+import { AdminDecision } from './enums/admin-decision.enum';
+import { EmailStatus } from './enums/email-status.enum';
 import { JobStatus } from './enums/job-status.enum';
 import { LeadStatus } from './enums/lead-status.enum';
 import { Lead, LeadDocument } from './schemas/lead.schema';
@@ -19,6 +21,7 @@ import {
   ScrapeSourceDocument,
 } from './schemas/scrape-source.schema';
 import {
+  DEFAULT_LEAD_GENERATION_LIMIT,
   SCRAPE_JOB_OPTIONS,
   SCRAPE_QUEUE,
   SCRAPE_TASK,
@@ -74,7 +77,11 @@ export class ScraperService {
     if (!result) throw new NotFoundException('Scrape source not found');
   }
 
-  async runSource(id: string, userId: string): Promise<ScrapeJobDocument> {
+  async runSource(
+    id: string,
+    userId: string,
+    leadLimit: number = DEFAULT_LEAD_GENERATION_LIMIT,
+  ): Promise<ScrapeJobDocument> {
     const source = await this.findSource(id);
     if (!source.isActive) {
       throw new BadRequestException('Scrape source is not active');
@@ -85,6 +92,7 @@ export class ScraperService {
       status: JobStatus.Running,
       startedAt: new Date(),
       pendingTasks: source.startUrls.length,
+      leadLimit,
       triggeredBy: new Types.ObjectId(userId),
     });
 
@@ -100,6 +108,58 @@ export class ScraperService {
     }
 
     return job;
+  }
+
+  /**
+   * Kicks off a "Generate Leads" run against the most recently created
+   * active source, capped at `limit` new (non-duplicate) leads.
+   */
+  async generateLeads(
+    userId: string,
+    limit: number = DEFAULT_LEAD_GENERATION_LIMIT,
+  ): Promise<ScrapeJobDocument> {
+    const source = await this.sourceModel
+      .findOne({ isActive: true })
+      .sort({ createdAt: -1 })
+      .exec();
+    if (!source) {
+      throw new BadRequestException(
+        'No active scrape source is configured. Create one via POST /scraper/sources first.',
+      );
+    }
+
+    return this.runSource(source._id.toString(), userId, limit);
+  }
+
+  /** Status of the most recent "Generate Leads" run, for polling. */
+  async getGenerationStatus(): Promise<{
+    running: boolean;
+    jobId: string | null;
+    status: JobStatus | null;
+    leadsCreated: number;
+    leadsDuplicate: number;
+    leadLimit: number;
+  }> {
+    const job = await this.jobModel.findOne().sort({ createdAt: -1 }).exec();
+    if (!job) {
+      return {
+        running: false,
+        jobId: null,
+        status: null,
+        leadsCreated: 0,
+        leadsDuplicate: 0,
+        leadLimit: DEFAULT_LEAD_GENERATION_LIMIT,
+      };
+    }
+
+    return {
+      running: job.status === JobStatus.Running,
+      jobId: job._id.toString(),
+      status: job.status,
+      leadsCreated: job.stats.leadsCreated,
+      leadsDuplicate: job.stats.leadsDuplicate,
+      leadLimit: job.leadLimit,
+    };
   }
 
   findJobs(sourceId?: string) {
@@ -160,6 +220,104 @@ export class ScraperService {
       .findByIdAndUpdate(
         id,
         { assignedTo: new Types.ObjectId(userId) },
+        { new: true },
+      )
+      .exec();
+    if (!lead) throw new NotFoundException('Lead not found');
+    return lead;
+  }
+
+  async toggleLeadCriterion(
+    id: string,
+    criterionId: string,
+  ): Promise<LeadDocument> {
+    const lead = await this.findLead(id);
+    const criterion = lead.criteria.find((item) => item.id === criterionId);
+    if (!criterion) throw new NotFoundException('Criterion not found');
+    criterion.met = !criterion.met;
+    if (lead.status === LeadStatus.New) {
+      lead.status = LeadStatus.ContractorReview;
+    }
+    await lead.save();
+    return lead;
+  }
+
+  async setLeadContractorNotes(
+    id: string,
+    notes: string,
+  ): Promise<LeadDocument> {
+    const lead = await this.findLead(id);
+    lead.contractorNotes = notes;
+    if (lead.status === LeadStatus.New) {
+      lead.status = LeadStatus.ContractorReview;
+    }
+    await lead.save();
+    return lead;
+  }
+
+  async setLeadAdminNotes(id: string, notes: string): Promise<LeadDocument> {
+    const lead = await this.leadModel
+      .findByIdAndUpdate(id, { adminNotes: notes }, { new: true })
+      .exec();
+    if (!lead) throw new NotFoundException('Lead not found');
+    return lead;
+  }
+
+  async submitLeadForApproval(id: string): Promise<LeadDocument> {
+    const lead = await this.leadModel
+      .findByIdAndUpdate(
+        id,
+        {
+          status: LeadStatus.PendingApproval,
+          contractorReviewedAt: new Date(),
+        },
+        { new: true },
+      )
+      .exec();
+    if (!lead) throw new NotFoundException('Lead not found');
+    return lead;
+  }
+
+  async sendLeadBackToContractor(id: string): Promise<LeadDocument> {
+    const lead = await this.leadModel
+      .findByIdAndUpdate(
+        id,
+        { status: LeadStatus.ContractorReview },
+        { new: true },
+      )
+      .exec();
+    if (!lead) throw new NotFoundException('Lead not found');
+    return lead;
+  }
+
+  async approveLead(id: string): Promise<LeadDocument> {
+    const now = new Date();
+    const lead = await this.leadModel
+      .findByIdAndUpdate(
+        id,
+        {
+          status: LeadStatus.Completed,
+          adminDecision: AdminDecision.Approved,
+          adminReviewedAt: now,
+          emailStatus: EmailStatus.Sent,
+          emailSentAt: now,
+        },
+        { new: true },
+      )
+      .exec();
+    if (!lead) throw new NotFoundException('Lead not found');
+    return lead;
+  }
+
+  async rejectLead(id: string): Promise<LeadDocument> {
+    const lead = await this.leadModel
+      .findByIdAndUpdate(
+        id,
+        {
+          status: LeadStatus.Rejected,
+          adminDecision: AdminDecision.Rejected,
+          adminReviewedAt: new Date(),
+        },
         { new: true },
       )
       .exec();

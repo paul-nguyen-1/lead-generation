@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../common/enums/role.enum';
@@ -24,10 +32,7 @@ export class UsersController {
 
   @Patch(':id/status')
   @ApiOperation({ summary: 'Activate or deactivate a user account' })
-  async setStatus(
-    @Param('id') id: string,
-    @Body() dto: UpdateUserStatusDto,
-  ) {
+  async setStatus(@Param('id') id: string, @Body() dto: UpdateUserStatusDto) {
     const user = await this.usersService.setActive(id, dto.isActive);
     return this.usersService.toSafeUser(user);
   }

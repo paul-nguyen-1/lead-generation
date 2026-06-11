@@ -112,12 +112,21 @@ describes where to crawl, a **job** is one crawl run of a source, and a
 | PATCH | `/scraper/sources/:id` | Admin | Update a scrape source |
 | DELETE | `/scraper/sources/:id` | Admin | Delete a scrape source |
 | POST | `/scraper/sources/:id/run` | Admin | Enqueue a crawl run for a source |
+| POST | `/scraper/generate` | Admin | Run the scraper against the most recently created active source, capped at `limit` new leads (default 15) |
+| GET | `/scraper/generate/status` | Admin | Get the status (running/leads created/duplicates) of the latest job |
 | GET | `/scraper/jobs` | Admin | List job runs (optionally filtered by `sourceId`) |
 | GET | `/scraper/jobs/:id` | Admin | Get a job run and its stats |
 | GET | `/scraper/leads` | Admin, Contractor | List leads (filterable by `sourceId`, `status`, `search`, paginated) |
 | GET | `/scraper/leads/:id` | Admin, Contractor | Get a lead |
 | PATCH | `/scraper/leads/:id/status` | Admin, Contractor | Update a lead's pipeline status |
-| PATCH | `/scraper/leads/:id/assign` | Admin | Assign a lead to a user |
+| PATCH | `/scraper/leads/:id/assign` | Admin | Assign a lead to a contractor |
+| PATCH | `/scraper/leads/:id/criteria` | Admin, Contractor | Toggle a review criterion (auto-moves `new` leads to `contractor_review`) |
+| PATCH | `/scraper/leads/:id/contractor-notes` | Admin, Contractor | Update the contractor's review notes |
+| PATCH | `/scraper/leads/:id/admin-notes` | Admin | Update internal admin notes |
+| PATCH | `/scraper/leads/:id/submit` | Admin, Contractor | Submit a lead for admin approval (`pending_approval`) |
+| PATCH | `/scraper/leads/:id/send-back` | Admin | Send a lead back to the contractor (`contractor_review`) |
+| PATCH | `/scraper/leads/:id/approve` | Admin | Approve a lead, mark it `completed` and its email `sent` |
+| PATCH | `/scraper/leads/:id/reject` | Admin, Contractor | Reject a lead (`rejected`) |
 
 #### Source types
 
@@ -170,8 +179,24 @@ describes where to crawl, a **job** is one crawl run of a source, and a
 - **Job status** (`src/scraper/enums/job-status.enum.ts`): `running`,
   `completed`, `failed`.
 - **Lead status** (`src/scraper/enums/lead-status.enum.ts`): `new`,
-  `reviewed`, `contacted`, `qualified`, `rejected`. Leads are deduplicated
-  per source by email/website.
+  `contractor_review`, `pending_approval`, `completed`, `rejected`. Leads are
+  deduplicated per source by email/website.
+
+#### Lead review workflow
+
+Each lead also carries a contractor/admin review pipeline:
+
+- `criteria` — a checklist (default: budget, timeline, contact, fit) the
+  assigned contractor toggles via `PATCH /scraper/leads/:id/criteria`.
+  Toggling a criterion (or setting `contractor-notes`) on a `new` lead moves
+  it to `contractor_review`.
+- `contractorNotes` / `contractorReviewedAt` — set when the contractor
+  submits the lead via `PATCH /scraper/leads/:id/submit`, which moves it to
+  `pending_approval`.
+- `adminNotes`, `adminDecision`, `adminReviewedAt`, `emailStatus`,
+  `emailSentAt` — set by an admin via `approve` (→ `completed`,
+  `emailStatus: sent`), `send-back` (→ `contractor_review`), or `reject` (→
+  `rejected`).
 
 #### How a run works
 
@@ -193,6 +218,26 @@ describes where to crawl, a **job** is one crawl run of a source, and a
 3. Job stats (pages visited, leads found, errors) are tracked on the
    `ScrapeJob` document, which is marked `completed` or `failed` once the
    job's tasks finish.
+
+#### Generating leads (`POST /scraper/generate`)
+
+This is a convenience entry point (used by the "Generate Leads" button in
+the UI) that runs the scraper against the most recently created **active**
+source:
+
+- Each `ScrapeJob` has a `leadLimit` (default 15, set via the optional
+  `limit` field in the request body, 1-100).
+- Leads are processed one at a time. For each candidate, `upsertLead`
+  reports whether it was newly created or a duplicate of an existing lead
+  (deduped by email/website/business name), incrementing
+  `stats.leadsCreated` or `stats.leadsDuplicate` accordingly.
+- The processor stops creating new leads (and stops enqueueing further
+  pages) once `stats.leadsCreated` reaches `leadLimit`.
+- `GET /scraper/generate/status` returns the latest job's `running` flag,
+  `status`, `leadsCreated`, `leadsDuplicate`, `leadLimit`, and `jobId` — used
+  to poll progress while a run is in flight.
+- If no active `ScrapeSource` exists, `POST /scraper/generate` responds with
+  `400 Bad Request`; create one via `POST /scraper/sources` first.
 
 #### Running the scraper locally
 

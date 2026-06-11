@@ -38,7 +38,7 @@ function countByStatus(leads: Array<Lead>): Record<LeadStatus, number> {
 }
 
 function App() {
-  const { leads, assignLead, resetSampleData } = useLeads()
+  const { leads, assignLead } = useLeads()
   const { contractors } = useContractors()
   const [filter, setFilter] = useState<LeadStatus | 'all'>('all')
 
@@ -90,13 +90,6 @@ function App() {
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              className="demo-button demo-button-secondary"
-              onClick={resetSampleData}
-            >
-              Reset Sample Data
-            </button>
           </div>
         </div>
 
@@ -144,7 +137,7 @@ function App() {
                       className="demo-select demo-input-fit"
                       value={lead.assignedTo}
                       onChange={(event) =>
-                        assignLead(lead.id, event.target.value)
+                        void assignLead(lead.id, event.target.value)
                       }
                     >
                       {!contractors.some((c) => c.id === lead.assignedTo) && (

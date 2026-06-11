@@ -60,10 +60,12 @@ function ApprovalsPage() {
             <ApprovalDetail
               lead={selected}
               contractors={contractors}
-              onAdminNotesChange={(notes) => setAdminNotes(selected.id, notes)}
-              onApprove={() => approveLead(selected.id)}
-              onSendBack={() => sendBackToContractor(selected.id)}
-              onReject={() => rejectLead(selected.id)}
+              onAdminNotesChange={(notes) =>
+                void setAdminNotes(selected.id, notes)
+              }
+              onApprove={() => void approveLead(selected.id)}
+              onSendBack={() => void sendBackToContractor(selected.id)}
+              onReject={() => void rejectLead(selected.id)}
             />
           ) : (
             <p className="demo-muted text-sm">
