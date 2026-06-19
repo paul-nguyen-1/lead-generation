@@ -7,8 +7,7 @@ import RequireAuth from '#/components/RequireAuth'
 import { type Lead } from '#/data/leads'
 import { formatDate, formatDateTime } from '#/lib/format'
 import { ApiError } from '#/lib/api'
-import StatusPill from '#/components/StatusPill'
-import CriteriaChecklist from '#/components/CriteriaChecklist'
+import StatusPill, { Pill } from '#/components/StatusPill'
 import LeadQueueList from '#/components/LeadQueueList'
 
 export const Route = createFileRoute('/workflow/$contractorId')({
@@ -199,14 +198,7 @@ function TabButton({
 
 function ContractorWorkflowTab() {
   const { contractorId } = Route.useParams()
-  const {
-    leads,
-    createLead,
-    toggleCriterion,
-    setContractorNotes,
-    submitForApproval,
-    rejectLead,
-  } = useLeads()
+  const { leads, createLead } = useLeads()
   const history = sortByRecentlyUpdated(
     leads.filter((lead) => lead.assignedTo === contractorId),
   )
@@ -219,8 +211,8 @@ function ContractorWorkflowTab() {
   return (
     <div>
       <p className="mb-6 max-w-2xl text-sm text-[var(--sea-ink-soft)]">
-        Log new leads as you generate them, review them against our criteria,
-        leave notes, and submit for approval.
+        Log new leads as you generate them. Once submitted, leads are locked
+        and sent to the admin for review.
       </p>
 
       <div className="mb-6">
@@ -230,7 +222,7 @@ function ContractorWorkflowTab() {
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <div className="demo-panel">
           <h2 className="demo-section-title mb-3">
-            History ({history.length})
+            My Leads ({history.length})
           </h2>
           <LeadQueueList
             leads={history}
@@ -242,20 +234,10 @@ function ContractorWorkflowTab() {
 
         <div className="demo-panel">
           {selected ? (
-            <LeadReviewDetail
-              lead={selected}
-              onToggleCriterion={(criterionId) =>
-                void toggleCriterion(selected.id, criterionId)
-              }
-              onNotesChange={(notes) =>
-                void setContractorNotes(selected.id, notes)
-              }
-              onSubmit={() => void submitForApproval(selected.id)}
-              onReject={() => void rejectLead(selected.id)}
-            />
+            <LeadDetailReadOnly lead={selected} />
           ) : (
             <p className="demo-muted text-sm">
-              Select a lead from the history to begin reviewing.
+              Select a lead from the list to view its details.
             </p>
           )}
         </div>
@@ -365,9 +347,12 @@ function DraftEmailForm({
           To: <span className="font-medium">{recipientEmail}</span>
         </p>
         {lead.emailStatus === 'draft' && lead.draftEmailCreatedAt && (
-          <p className="mt-1 text-xs text-[var(--lagoon-deep)]">
-            Draft saved &mdash; awaiting admin review
-          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <Pill label="Pending" color="#7c3aed" />
+            <span className="text-xs text-(--sea-ink-soft)">
+              Draft saved &mdash; awaiting admin review.
+            </span>
+          </div>
         )}
         {lead.emailStatus === 'sent' && (
           <p className="mt-1 text-xs text-[var(--palm)] font-semibold">
@@ -447,6 +432,7 @@ function AddLeadForm({
     extraFields: [],
   }
   const [form, setForm] = useState<CreateLeadInput>(emptyForm)
+  const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -479,7 +465,7 @@ function AddLeadForm({
     }))
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
 
@@ -488,10 +474,16 @@ function AddLeadForm({
       return
     }
 
+    setConfirming(true)
+  }
+
+  async function handleConfirm() {
+    setError(null)
     setSubmitting(true)
     try {
       await onCreate(form)
       setForm(emptyForm)
+      setConfirming(false)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to add lead')
     } finally {
@@ -500,6 +492,75 @@ function AddLeadForm({
   }
 
   const extraFields = form.extraFields ?? []
+
+  const FIELD_LABELS: Array<[keyof CreateLeadInput, string]> = [
+    ['firstName', 'First Name'],
+    ['lastName', 'Last Name'],
+    ['jobTitle', 'Job Title'],
+    ['email', 'Email Address'],
+    ['linkedinUrl', 'LinkedIn URL'],
+    ['businessName', 'Company Name'],
+    ['website', 'Website URL'],
+    ['address', 'Full Address'],
+    ['phone', 'Phone Number'],
+    ['industry', 'Industry'],
+    ['notes', 'Lead Details'],
+  ]
+
+  if (confirming) {
+    return (
+      <div className="demo-panel">
+        <h2 className="demo-section-title mb-1">Confirm Lead</h2>
+        <p className="mb-4 text-sm text-(--sea-ink-soft)">
+          Review the details below. Once submitted, this lead cannot be edited.
+        </p>
+
+        <dl className="mb-4 grid gap-2 sm:grid-cols-2">
+          {FIELD_LABELS.map(([key, label]) => {
+            const val = form[key] as string | undefined
+            if (!val?.trim()) return null
+            return (
+              <div key={key} className={key === 'notes' || key === 'linkedinUrl' || key === 'address' ? 'sm:col-span-2' : ''}>
+                <dt className="island-kicker mb-0.5">{label}</dt>
+                <dd className="m-0 break-all text-sm text-(--sea-ink)">{val}</dd>
+              </div>
+            )
+          })}
+          {extraFields.filter((f) => f.label.trim()).map((field, i) => (
+            <div key={i}>
+              <dt className="island-kicker mb-0.5">{field.label}</dt>
+              <dd className="m-0 text-sm text-(--sea-ink)">{field.value || '—'}</dd>
+            </div>
+          ))}
+        </dl>
+
+        {error && (
+          <p className="mb-3 text-sm text-[#9f3030]" role="alert">
+            {error}
+          </p>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            className="demo-button"
+            onClick={() => void handleConfirm()}
+            disabled={submitting}
+          >
+            {submitting ? 'Submitting…' : 'Confirm & Submit'}
+          </button>
+          <button
+            type="button"
+            className="demo-button demo-button-secondary"
+            onClick={() => { setConfirming(false); setError(null) }}
+            disabled={submitting}
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="demo-panel">
@@ -640,7 +701,7 @@ function AddLeadForm({
 
           <div className="sm:col-span-2">
             <label htmlFor="lead-notes" className="island-kicker mb-1 block">
-              Notes
+              Lead Details
             </label>
             <textarea
               id="lead-notes"
@@ -820,69 +881,6 @@ function LeadDetail({
 }
 
 function LeadDetailReadOnly({ lead }: { lead: Lead }) {
-  return (
-    <LeadDetail lead={lead}>
-      <div className="mb-5">
-        <h3 className="demo-section-title mb-2">Review Criteria</h3>
-        <CriteriaChecklist criteria={lead.criteria} />
-      </div>
-
-      <div>
-        <h3 className="demo-section-title mb-2">Contractor Notes</h3>
-        <p className="demo-card m-0 text-sm text-[var(--sea-ink-soft)]">
-          {lead.contractorNotes || 'No notes yet.'}
-        </p>
-      </div>
-    </LeadDetail>
-  )
+  return <LeadDetail lead={lead} />
 }
 
-function LeadReviewDetail({
-  lead,
-  onToggleCriterion,
-  onNotesChange,
-  onSubmit,
-  onReject,
-}: {
-  lead: Lead
-  onToggleCriterion: (criterionId: string) => void
-  onNotesChange: (notes: string) => void
-  onSubmit: () => void
-  onReject: () => void
-}) {
-  return (
-    <LeadDetail lead={lead}>
-      <div className="mb-5">
-        <h3 className="demo-section-title mb-2">Review Criteria</h3>
-        <CriteriaChecklist
-          criteria={lead.criteria}
-          editable
-          onToggle={onToggleCriterion}
-        />
-      </div>
-
-      <div className="mb-6">
-        <h3 className="demo-section-title mb-2">Your Notes</h3>
-        <textarea
-          className="demo-textarea"
-          placeholder="Add context for the review team..."
-          value={lead.contractorNotes}
-          onChange={(event) => onNotesChange(event.target.value)}
-        />
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <button type="button" className="demo-button" onClick={onSubmit}>
-          Submit for Approval
-        </button>
-        <button
-          type="button"
-          className="demo-button demo-button-danger"
-          onClick={onReject}
-        >
-          Reject Lead
-        </button>
-      </div>
-    </LeadDetail>
-  )
-}

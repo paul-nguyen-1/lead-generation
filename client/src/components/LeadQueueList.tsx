@@ -33,20 +33,21 @@ export default function LeadQueueList({
             }`}
           >
             <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="m-0 text-sm font-semibold text-[var(--sea-ink)]">
+              <div className="min-w-0">
+                <p className="m-0 truncate text-sm font-semibold text-(--sea-ink)">
                   {lead.name}
                 </p>
-                {lead.company && (
-                  <p className="m-0 text-xs text-[var(--sea-ink-soft)]">
-                    {lead.company}
+                {(lead.jobTitle || lead.company) && (
+                  <p className="m-0 truncate text-xs text-(--sea-ink-soft)">
+                    {[lead.jobTitle, lead.company].filter(Boolean).join(' · ')}
                   </p>
                 )}
               </div>
               <StatusPill status={lead.status} />
             </div>
-            <p className="m-0 mt-2 text-xs text-[var(--sea-ink-soft)]">
-              Added {formatDate(lead.dateAdded)} &middot; {lead.source}
+            <p className="m-0 mt-2 text-xs text-(--sea-ink-soft)">
+              Added {formatDate(lead.dateAdded)}
+              {lead.email && <> &middot; {lead.email}</>}
             </p>
           </button>
         </li>
