@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -30,6 +31,7 @@ export interface ContractorAnalytics {
   completedLeads: number;
   rejectedLeads: number;
   inProgressLeads: number;
+  draftLeads: number;
   approvalRate: number | null;
   leadsLast7Days: number;
   avgReviewHours: number | null;
@@ -147,11 +149,40 @@ export class ScraperService {
     return lead;
   }
 
+  async autoAssignDraft(leadId: string): Promise<LeadDocument> {
+    const drafters = await this.usersService.findEligibleDrafters();
+    if (drafters.length === 0) {
+      throw new BadRequestException(
+        'No contractors have both Leads and Draft Email access enabled',
+      );
+    }
+    // Balance load by picking the drafter with fewest currently assigned leads
+    const counts = await Promise.all(
+      drafters.map((d) =>
+        this.leadModel.countDocuments({ assignedTo: d._id }).exec(),
+      ),
+    );
+    const minIndex = counts.indexOf(Math.min(...counts));
+    const chosen = drafters[minIndex];
+    return this.assignLead(leadId, chosen._id.toString());
+  }
+
   async saveDraftEmail(
     id: string,
     subject: string,
     body: string,
+    callerId: string,
+    callerRole: Role,
   ): Promise<LeadDocument> {
+    if (callerRole === Role.Contractor) {
+      const caller = await this.usersService.findById(callerId);
+      if (!caller?.permissions?.draftEmailAccess) {
+        throw new ForbiddenException(
+          'Draft Email access is required to save a draft',
+        );
+      }
+    }
+
     const lead = await this.leadModel
       .findByIdAndUpdate(
         id,
@@ -160,6 +191,10 @@ export class ScraperService {
           draftEmailBody: body,
           draftEmailCreatedAt: new Date(),
           emailStatus: EmailStatus.Draft,
+          // Auto-assign the lead to the contractor saving the draft
+          ...(callerRole === Role.Contractor && {
+            assignedTo: new Types.ObjectId(callerId),
+          }),
         },
         { new: true },
       )
@@ -278,6 +313,9 @@ export class ScraperService {
       const rejectedLeads = contractorLeads.filter(
         (lead) => lead.status === LeadStatus.Rejected,
       ).length;
+      const draftLeads = contractorLeads.filter(
+        (lead) => lead.draftEmailCreatedAt !== null,
+      ).length;
       const inProgressLeads = totalLeads - completedLeads - rejectedLeads;
       const decided = completedLeads + rejectedLeads;
       const approvalRate =
@@ -314,6 +352,7 @@ export class ScraperService {
         completedLeads,
         rejectedLeads,
         inProgressLeads,
+        draftLeads,
         approvalRate,
         leadsLast7Days,
         avgReviewHours,

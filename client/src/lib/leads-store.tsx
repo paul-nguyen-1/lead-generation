@@ -36,6 +36,7 @@ interface LeadsContextValue {
   setContractorNotes: (leadId: string, notes: string) => Promise<void>
   setAdminNotes: (leadId: string, notes: string) => Promise<void>
   saveDraftEmail: (leadId: string, subject: string, body: string) => Promise<void>
+  autoAssignDraft: (leadId: string) => Promise<void>
   submitForApproval: (leadId: string) => Promise<void>
   sendBackToContractor: (leadId: string) => Promise<void>
   approveLead: (leadId: string) => Promise<void>
@@ -189,6 +190,14 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     applyUpdate(leadId, updated)
   }
 
+  async function autoAssignDraft(leadId: string) {
+    const updated = await apiFetch<ApiLead>(
+      `/scraper/leads/${leadId}/auto-assign-draft`,
+      { method: 'PATCH' },
+    )
+    applyUpdate(leadId, updated)
+  }
+
   async function submitForApproval(leadId: string) {
     const updated = await apiFetch<ApiLead>(
       `/scraper/leads/${leadId}/submit`,
@@ -231,6 +240,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     setContractorNotes,
     setAdminNotes,
     saveDraftEmail,
+    autoAssignDraft,
     submitForApproval,
     sendBackToContractor,
     approveLead,

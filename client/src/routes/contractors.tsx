@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { apiFetch, ApiError } from '#/lib/api'
 import { useContractors } from '#/lib/contractors'
+import { useContractorAnalytics } from '#/lib/contractor-analytics'
 import { type User } from '#/lib/auth-store'
 import RequireAuth from '#/components/RequireAuth'
 import { Pill } from '#/components/StatusPill'
@@ -16,9 +17,14 @@ export const Route = createFileRoute('/contractors')({
 
 function ContractorsPage() {
   const { contractors, loading, refetch } = useContractors()
+  const { contractors: analytics } = useContractorAnalytics()
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [managingContractor, setManagingContractor] = useState<User | null>(null)
+
+  function getStats(contractorId: string) {
+    return analytics.find((a) => a.id === contractorId)
+  }
 
   async function toggleActive(id: string, isActive: boolean) {
     setError(null)
@@ -70,11 +76,17 @@ function ContractorsPage() {
                   <th>Email</th>
                   <th>Status</th>
                   <th>Access</th>
+                  <th>Leads</th>
+                  <th>Drafts</th>
+                  <th>Approved</th>
+                  <th>Rejected</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {contractors.map((contractor) => (
+                {contractors.map((contractor) => {
+                  const stats = getStats(contractor.id)
+                  return (
                   <tr key={contractor.id}>
                     <td className="font-semibold text-[var(--sea-ink)]">
                       {contractor.name}
@@ -105,6 +117,10 @@ function ContractorsPage() {
                           )}
                       </div>
                     </td>
+                    <td className="text-center text-sm">{stats?.totalLeads ?? '—'}</td>
+                    <td className="text-center text-sm">{stats?.draftLeads ?? '—'}</td>
+                    <td className="text-center text-sm">{stats?.completedLeads ?? '—'}</td>
+                    <td className="text-center text-sm">{stats?.rejectedLeads ?? '—'}</td>
                     <td>
                       <div className="flex gap-2">
                         <button
@@ -131,7 +147,8 @@ function ContractorsPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
             {!loading && contractors.length === 0 && (

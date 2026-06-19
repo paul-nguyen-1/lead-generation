@@ -9,6 +9,7 @@ export interface ContractorAnalytics {
   completedLeads: number
   rejectedLeads: number
   inProgressLeads: number
+  draftLeads: number
   approvalRate: number | null
   leadsLast7Days: number
   avgReviewHours: number | null

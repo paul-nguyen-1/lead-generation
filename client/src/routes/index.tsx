@@ -37,6 +37,7 @@ function App() {
                 <th>Completed</th>
                 <th>Rejected</th>
                 <th>In Progress</th>
+                <th>Drafts</th>
                 <th>Approval Rate</th>
                 <th>Leads (Last 7 Days)</th>
                 <th>Avg. Review Time</th>
@@ -55,6 +56,7 @@ function App() {
                   <td>{contractor.completedLeads}</td>
                   <td>{contractor.rejectedLeads}</td>
                   <td>{contractor.inProgressLeads}</td>
+                  <td>{contractor.draftLeads}</td>
                   <td>
                     {contractor.approvalRate !== null
                       ? `${contractor.approvalRate.toString()}%`

@@ -69,6 +69,17 @@ export class UsersService implements OnModuleInit {
     return this.userModel.find(role ? { role } : {}).exec();
   }
 
+  findEligibleDrafters() {
+    return this.userModel
+      .find({
+        role: Role.Contractor,
+        isActive: true,
+        'permissions.leadsAccess': true,
+        'permissions.draftEmailAccess': true,
+      })
+      .exec();
+  }
+
   async create(data: {
     email: string;
     password: string;

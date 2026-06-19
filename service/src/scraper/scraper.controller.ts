@@ -108,8 +108,28 @@ export class ScraperController {
   @Patch('leads/:id/draft-email')
   @Roles(Role.Admin, Role.Contractor)
   @ApiOperation({ summary: 'Save or update a draft outreach email for a lead' })
-  saveDraftEmail(@Param('id') id: string, @Body() dto: SaveDraftEmailDto) {
-    return this.scraperService.saveDraftEmail(id, dto.subject, dto.body);
+  saveDraftEmail(
+    @Param('id') id: string,
+    @Body() dto: SaveDraftEmailDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.scraperService.saveDraftEmail(
+      id,
+      dto.subject,
+      dto.body,
+      user.id,
+      user.role,
+    );
+  }
+
+  @Patch('leads/:id/auto-assign-draft')
+  @Roles(Role.Admin)
+  @ApiOperation({
+    summary:
+      'Auto-assign a lead to the eligible contractor with the fewest current leads',
+  })
+  autoAssignDraft(@Param('id') id: string) {
+    return this.scraperService.autoAssignDraft(id);
   }
 
   @Patch('leads/:id/submit')

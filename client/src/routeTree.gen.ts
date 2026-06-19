@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkflowRouteImport } from './routes/workflow'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as DraftsRouteImport } from './routes/drafts'
 import { Route as ContractorsRouteImport } from './routes/contractors'
 import { Route as CompletedRouteImport } from './routes/completed'
 import { Route as ApprovalsRouteImport } from './routes/approvals'
@@ -27,6 +28,11 @@ const WorkflowRoute = WorkflowRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DraftsRoute = DraftsRouteImport.update({
+  id: '/drafts',
+  path: '/drafts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContractorsRoute = ContractorsRouteImport.update({
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/approvals': typeof ApprovalsRoute
   '/completed': typeof CompletedRoute
   '/contractors': typeof ContractorsRoute
+  '/drafts': typeof DraftsRoute
   '/login': typeof LoginRoute
   '/workflow': typeof WorkflowRouteWithChildren
   '/workflow/$contractorId': typeof WorkflowContractorIdRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/approvals': typeof ApprovalsRoute
   '/completed': typeof CompletedRoute
   '/contractors': typeof ContractorsRoute
+  '/drafts': typeof DraftsRoute
   '/login': typeof LoginRoute
   '/workflow/$contractorId': typeof WorkflowContractorIdRoute
   '/workflow': typeof WorkflowIndexRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/approvals': typeof ApprovalsRoute
   '/completed': typeof CompletedRoute
   '/contractors': typeof ContractorsRoute
+  '/drafts': typeof DraftsRoute
   '/login': typeof LoginRoute
   '/workflow': typeof WorkflowRouteWithChildren
   '/workflow/$contractorId': typeof WorkflowContractorIdRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/completed'
     | '/contractors'
+    | '/drafts'
     | '/login'
     | '/workflow'
     | '/workflow/$contractorId'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/completed'
     | '/contractors'
+    | '/drafts'
     | '/login'
     | '/workflow/$contractorId'
     | '/workflow'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/approvals'
     | '/completed'
     | '/contractors'
+    | '/drafts'
     | '/login'
     | '/workflow'
     | '/workflow/$contractorId'
@@ -139,6 +151,7 @@ export interface RootRouteChildren {
   ApprovalsRoute: typeof ApprovalsRoute
   CompletedRoute: typeof CompletedRoute
   ContractorsRoute: typeof ContractorsRoute
+  DraftsRoute: typeof DraftsRoute
   LoginRoute: typeof LoginRoute
   WorkflowRoute: typeof WorkflowRouteWithChildren
 }
@@ -157,6 +170,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/drafts': {
+      id: '/drafts'
+      path: '/drafts'
+      fullPath: '/drafts'
+      preLoaderRoute: typeof DraftsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contractors': {
@@ -231,6 +251,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApprovalsRoute: ApprovalsRoute,
   CompletedRoute: CompletedRoute,
   ContractorsRoute: ContractorsRoute,
+  DraftsRoute: DraftsRoute,
   LoginRoute: LoginRoute,
   WorkflowRoute: WorkflowRouteWithChildren,
 }
