@@ -89,6 +89,15 @@ export class Lead {
 
   @Prop({ type: Date, default: null })
   emailSentAt: Date | null;
+
+  @Prop({ type: String, default: '' })
+  draftEmailSubject: string;
+
+  @Prop({ type: String, default: '' })
+  draftEmailBody: string;
+
+  @Prop({ type: Date, default: null })
+  draftEmailCreatedAt: Date | null;
 }
 
 export const LeadSchema = SchemaFactory.createForClass(Lead);

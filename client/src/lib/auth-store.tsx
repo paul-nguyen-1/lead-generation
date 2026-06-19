@@ -13,18 +13,25 @@ const STORAGE_KEY = 'lead-pipeline:auth'
 
 export type Role = 'admin' | 'contractor'
 
+export interface ContractorPermissions {
+  leadsAccess: boolean
+  draftEmailAccess: boolean
+}
+
 export interface User {
   id: string
   email: string
   name: string
   role: Role
   isActive: boolean
+  permissions: ContractorPermissions
 }
 
-interface AuthResult {
+// Only tokens are persisted — user is always fetched from the DB so
+// permissions are never stale.
+interface StoredTokens {
   accessToken: string
   refreshToken: string
-  user: User
 }
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
@@ -39,110 +46,115 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [stored, setStored] = useState<AuthResult | null>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [status, setStatus] = useState<AuthStatus>('loading')
-  const storedRef = useRef<AuthResult | null>(null)
-  storedRef.current = stored
+  const tokensRef = useRef<StoredTokens | null>(null)
 
-  function persist(auth: AuthResult | null) {
-    setStored(auth)
-    if (auth) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(auth))
+  function persistTokens(tokens: StoredTokens | null) {
+    tokensRef.current = tokens
+    if (tokens) {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(tokens))
     } else {
       window.localStorage.removeItem(STORAGE_KEY)
     }
   }
 
   useEffect(() => {
+    // Restore tokens synchronously so the API hooks have them immediately.
+    let tokens: StoredTokens | null = null
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY)
-      if (raw) {
-        setStored(JSON.parse(raw) as AuthResult)
-        setStatus('authenticated')
-      } else {
-        setStatus('unauthenticated')
-      }
-    } catch {
-      setStatus('unauthenticated')
-    }
-  }, [])
+      if (raw) tokens = JSON.parse(raw) as StoredTokens
+    } catch { /* ignore */ }
 
-  useEffect(() => {
+    if (tokens) tokensRef.current = tokens
+
     configureApi({
-      getAccessToken: () => storedRef.current?.accessToken ?? null,
+      getAccessToken: () => tokensRef.current?.accessToken ?? null,
       refreshAccessToken: async () => {
-        const current = storedRef.current
+        const current = tokensRef.current
         if (!current) return null
         try {
-          const result = await apiFetch<AuthResult>('/auth/refresh', {
-            method: 'POST',
-            body: { refreshToken: current.refreshToken },
-            auth: false,
-          })
-          persist(result)
+          const result = await apiFetch<StoredTokens & { user: User }>(
+            '/auth/refresh',
+            {
+              method: 'POST',
+              body: { refreshToken: current.refreshToken },
+              auth: false,
+            },
+          )
+          persistTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken })
+          setUser(result.user)
           return result.accessToken
         } catch {
           return null
         }
       },
       logout: () => {
-        persist(null)
+        persistTokens(null)
+        setUser(null)
         setStatus('unauthenticated')
       },
     })
+
+    if (!tokens) {
+      setStatus('unauthenticated')
+      return
+    }
+
+    // Always pull user from DB — permissions always reflect current DB state.
+    apiFetch<User>('/auth/me')
+      .then((freshUser) => {
+        setUser(freshUser)
+        setStatus('authenticated')
+      })
+      .catch(() => {
+        persistTokens(null)
+        setStatus('unauthenticated')
+      })
   }, [])
 
   async function login(email: string, password: string): Promise<User> {
-    const result = await apiFetch<AuthResult>('/auth/login', {
+    const result = await apiFetch<StoredTokens & { user: User }>('/auth/login', {
       method: 'POST',
       body: { email, password },
       auth: false,
     })
-    persist(result)
+    persistTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken })
+    setUser(result.user)
     setStatus('authenticated')
     return result.user
   }
 
   function logout() {
-    const current = storedRef.current
-    persist(null)
+    const token = tokensRef.current?.accessToken
+    persistTokens(null)
+    setUser(null)
     setStatus('unauthenticated')
-    if (current) {
+    if (token) {
       apiFetch('/auth/logout', {
         method: 'POST',
         auth: false,
-        headers: { Authorization: `Bearer ${current.accessToken}` },
-      }).catch(() => {
-        // best-effort - tokens are already cleared locally
-      })
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {})
     }
   }
 
-  const value: AuthContextValue = {
-    status,
-    user: stored?.user ?? null,
-    login,
-    logout,
-  }
+  const value: AuthContextValue = { status, user, login, logout }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
   const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider')
   return context
 }
 
-/** Navigate to the landing page appropriate for the user's role. */
 export function useGoHome() {
   const navigate = useNavigate()
   return (user: User) => {
-    if (user.role === 'admin') {
-      return navigate({ to: '/', replace: true })
-    }
+    if (user.role === 'admin') return navigate({ to: '/', replace: true })
     return navigate({
       to: '/workflow/$contractorId',
       params: { contractorId: user.id },

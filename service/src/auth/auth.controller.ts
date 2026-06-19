@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  NotFoundException,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -18,11 +19,15 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
+import { UsersService } from '../users/users.service';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -59,8 +64,10 @@ export class AuthController {
   @Get('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get the current authenticated user' })
-  me(@CurrentUser() user: AuthenticatedUser) {
-    return user;
+  @ApiOperation({ summary: 'Get the current authenticated user (always from DB)' })
+  async me(@CurrentUser() user: AuthenticatedUser) {
+    const fresh = await this.usersService.findById(user.id);
+    if (!fresh) throw new NotFoundException('User not found');
+    return this.usersService.toSafeUser(fresh);
   }
 }

@@ -4,6 +4,11 @@ import { Role } from '../../common/enums/role.enum';
 
 export type UserDocument = HydratedDocument<User>;
 
+export interface ContractorPermissions {
+  leadsAccess: boolean;
+  draftEmailAccess: boolean;
+}
+
 @Schema({ timestamps: true })
 export class User {
   @Prop({ required: true, unique: true, lowercase: true, trim: true })
@@ -23,6 +28,15 @@ export class User {
 
   @Prop({ type: String, default: null })
   refreshTokenHash: string | null;
+
+  @Prop({
+    type: {
+      leadsAccess: { type: Boolean, default: false },
+      draftEmailAccess: { type: Boolean, default: false },
+    },
+    default: () => ({ leadsAccess: false, draftEmailAccess: false }),
+  })
+  permissions: ContractorPermissions;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

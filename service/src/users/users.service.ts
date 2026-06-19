@@ -9,7 +9,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import { Model } from 'mongoose';
 import { Role } from '../common/enums/role.enum';
-import { User, UserDocument } from './schemas/user.schema';
+import { ContractorPermissions, User, UserDocument } from './schemas/user.schema';
 
 const SALT_ROUNDS = 10;
 
@@ -19,6 +19,7 @@ export interface SafeUser {
   name: string;
   role: Role;
   isActive: boolean;
+  permissions: ContractorPermissions;
 }
 
 @Injectable()
@@ -104,6 +105,17 @@ export class UsersService implements OnModuleInit {
     return user;
   }
 
+  async setPermissions(
+    userId: string,
+    permissions: ContractorPermissions,
+  ): Promise<UserDocument> {
+    const user = await this.userModel
+      .findByIdAndUpdate(userId, { permissions }, { new: true })
+      .exec();
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
   toSafeUser(user: UserDocument): SafeUser {
     return {
       id: user._id.toString(),
@@ -111,6 +123,7 @@ export class UsersService implements OnModuleInit {
       name: user.name,
       role: user.role,
       isActive: user.isActive,
+      permissions: user.permissions ?? { leadsAccess: false, draftEmailAccess: false },
     };
   }
 }

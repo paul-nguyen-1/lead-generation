@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { apiFetch, ApiError } from '#/lib/api'
 import { useContractors } from '#/lib/contractors'
+import { type User } from '#/lib/auth-store'
 import RequireAuth from '#/components/RequireAuth'
 import { Pill } from '#/components/StatusPill'
 
@@ -17,6 +18,7 @@ function ContractorsPage() {
   const { contractors, loading, refetch } = useContractors()
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [managingContractor, setManagingContractor] = useState<User | null>(null)
 
   async function toggleActive(id: string, isActive: boolean) {
     setError(null)
@@ -67,7 +69,8 @@ function ContractorsPage() {
                   <th>Name</th>
                   <th>Email</th>
                   <th>Status</th>
-                  <th>Action</th>
+                  <th>Access</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -87,20 +90,45 @@ function ContractorsPage() {
                       )}
                     </td>
                     <td>
-                      <button
-                        type="button"
-                        className={
-                          contractor.isActive
-                            ? 'demo-button demo-button-danger'
-                            : 'demo-button demo-button-secondary'
-                        }
-                        disabled={updatingId === contractor.id}
-                        onClick={() =>
-                          toggleActive(contractor.id, !contractor.isActive)
-                        }
-                      >
-                        {contractor.isActive ? 'Deactivate' : 'Activate'}
-                      </button>
+                      <div className="flex flex-wrap gap-1">
+                        {contractor.permissions?.leadsAccess ? (
+                          <Pill label="Leads" color="#2563eb" />
+                        ) : null}
+                        {contractor.permissions?.draftEmailAccess ? (
+                          <Pill label="Draft Email" color="#7c3aed" />
+                        ) : null}
+                        {!contractor.permissions?.leadsAccess &&
+                          !contractor.permissions?.draftEmailAccess && (
+                            <span className="text-xs text-[var(--sea-ink-soft)]">
+                              None
+                            </span>
+                          )}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          className="demo-button demo-button-secondary"
+                          onClick={() => setManagingContractor(contractor)}
+                        >
+                          Manage Access
+                        </button>
+                        <button
+                          type="button"
+                          className={
+                            contractor.isActive
+                              ? 'demo-button demo-button-danger'
+                              : 'demo-button demo-button-secondary'
+                          }
+                          disabled={updatingId === contractor.id}
+                          onClick={() =>
+                            void toggleActive(contractor.id, !contractor.isActive)
+                          }
+                        >
+                          {contractor.isActive ? 'Deactivate' : 'Activate'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -116,7 +144,150 @@ function ContractorsPage() {
 
         <AddContractorForm onCreated={refetch} />
       </div>
+
+      {managingContractor && (
+        <PermissionsModal
+          contractor={managingContractor}
+          onClose={() => setManagingContractor(null)}
+          onSaved={() => {
+            setManagingContractor(null)
+            refetch()
+          }}
+        />
+      )}
     </main>
+  )
+}
+
+function PermissionsModal({
+  contractor,
+  onClose,
+  onSaved,
+}: {
+  contractor: User
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [leadsAccess, setLeadsAccess] = useState(
+    contractor.permissions?.leadsAccess ?? false,
+  )
+  const [draftEmailAccess, setDraftEmailAccess] = useState(
+    contractor.permissions?.draftEmailAccess ?? false,
+  )
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSave() {
+    setError(null)
+    setSaving(true)
+    try {
+      await apiFetch(`/users/${contractor.id}/permissions`, {
+        method: 'PATCH',
+        body: { leadsAccess, draftEmailAccess },
+      })
+      onSaved()
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to save')
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div className="island-shell w-full max-w-sm rounded-2xl p-6 shadow-xl">
+        <h2 className="mb-1 text-lg font-bold text-[var(--sea-ink)]">
+          Manage Access
+        </h2>
+        <p className="mb-5 text-sm text-[var(--sea-ink-soft)]">
+          {contractor.name} &mdash; {contractor.email}
+        </p>
+
+        <div className="mb-5 flex flex-col gap-4">
+          <ToggleRow
+            label="Leads Access"
+            description="Can log leads, review criteria, and submit for approval."
+            checked={leadsAccess}
+            onChange={setLeadsAccess}
+          />
+          <ToggleRow
+            label="Draft Email Access"
+            description="Can compose outreach email drafts for admin to review and send."
+            checked={draftEmailAccess}
+            onChange={setDraftEmailAccess}
+          />
+        </div>
+
+        {error && (
+          <p className="mb-3 text-sm text-[#9f3030]" role="alert">
+            {error}
+          </p>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            className="demo-button"
+            onClick={() => void handleSave()}
+            disabled={saving}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button
+            type="button"
+            className="demo-button demo-button-secondary"
+            onClick={onClose}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ToggleRow({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string
+  description: string
+  checked: boolean
+  onChange: (value: boolean) => void
+}) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3">
+      <div className="relative mt-0.5 flex-shrink-0">
+        <input
+          type="checkbox"
+          className="sr-only"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        <div
+          className={[
+            'h-5 w-9 rounded-full transition-colors',
+            checked ? 'bg-[var(--lagoon)]' : 'bg-[var(--line)]',
+          ].join(' ')}
+        />
+        <div
+          className={[
+            'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
+            checked ? 'translate-x-4' : 'translate-x-0.5',
+          ].join(' ')}
+        />
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-[var(--sea-ink)]">{label}</p>
+        <p className="text-xs text-[var(--sea-ink-soft)]">{description}</p>
+      </div>
+    </label>
   )
 }
 
@@ -153,7 +324,7 @@ function AddContractorForm({ onCreated }: { onCreated: () => void }) {
   return (
     <div className="demo-panel">
       <h2 className="demo-section-title mb-3">Add Contractor</h2>
-      <form onSubmit={handleSubmit} className="grid gap-4">
+      <form onSubmit={(e) => void handleSubmit(e)} className="grid gap-4">
         <div>
           <label htmlFor="contractor-name" className="island-kicker mb-1 block">
             Name

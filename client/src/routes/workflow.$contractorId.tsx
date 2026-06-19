@@ -29,7 +29,7 @@ function WorkflowRouter() {
   return user?.role === 'admin' ? (
     <AdminContractorHistoryPage />
   ) : (
-    <ContractorWorkflowPage />
+    <ContractorPortal />
   )
 }
 
@@ -38,6 +38,8 @@ function sortByRecentlyUpdated(leads: Array<Lead>) {
     (a, b) => +new Date(b.dateUpdated) - +new Date(a.dateUpdated),
   )
 }
+
+// ─── Admin view ──────────────────────────────────────────────────────────────
 
 function AdminContractorHistoryPage() {
   const { contractorId } = Route.useParams()
@@ -96,10 +98,107 @@ function AdminContractorHistoryPage() {
   )
 }
 
-function ContractorWorkflowPage() {
-  const { contractorId } = Route.useParams()
+// ─── Contractor portal with tabs ─────────────────────────────────────────────
+
+type ContractorTab = 'workflow' | 'draft-email'
+
+function ContractorPortal() {
   const { user } = useAuth()
-  const contractorName = user?.name ?? 'Contractor'
+  const perms = user?.permissions
+  const hasLeads = perms?.leadsAccess ?? false
+  const hasDraft = perms?.draftEmailAccess ?? false
+
+  const defaultTab: ContractorTab = hasLeads
+    ? 'workflow'
+    : hasDraft
+      ? 'draft-email'
+      : 'workflow'
+
+  const [activeTab, setActiveTab] = useState<ContractorTab>(defaultTab)
+
+  if (!hasLeads && !hasDraft) {
+    return (
+      <main className="page-wrap px-4 py-12">
+        <section className="mb-6">
+          <p className="island-kicker mb-2">My Portal</p>
+          <h1 className="display-title text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl">
+            Contractor Workspace
+          </h1>
+        </section>
+        <div className="demo-panel max-w-lg">
+          <p className="text-sm text-[var(--sea-ink-soft)]">
+            You don't have access to any features yet. Contact your admin to
+            enable Leads or Draft Email access for your account.
+          </p>
+        </div>
+      </main>
+    )
+  }
+
+  return (
+    <main className="page-wrap px-4 py-12">
+      <section className="mb-6">
+        <p className="island-kicker mb-2">My Portal</p>
+        <h1 className="display-title text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl">
+          Contractor Workspace
+        </h1>
+      </section>
+
+      {hasLeads && hasDraft && (
+        <div className="mb-6 flex gap-1 border-b border-[var(--line)]">
+          <TabButton
+            active={activeTab === 'workflow'}
+            onClick={() => setActiveTab('workflow')}
+          >
+            My Leads
+          </TabButton>
+          <TabButton
+            active={activeTab === 'draft-email'}
+            onClick={() => setActiveTab('draft-email')}
+          >
+            Draft Email
+          </TabButton>
+        </div>
+      )}
+
+      {activeTab === 'workflow' && hasLeads ? (
+        <ContractorWorkflowTab />
+      ) : hasDraft ? (
+        <DraftEmailTab />
+      ) : null}
+    </main>
+  )
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        'rounded-t-lg px-5 py-2.5 text-sm font-semibold transition-colors',
+        active
+          ? 'border-b-2 border-[var(--lagoon)] text-[var(--lagoon-deep)]'
+          : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]',
+      ].join(' ')}
+    >
+      {children}
+    </button>
+  )
+}
+
+// ─── My Leads tab ────────────────────────────────────────────────────────────
+
+function ContractorWorkflowTab() {
+  const { contractorId } = Route.useParams()
   const {
     leads,
     createLead,
@@ -118,17 +217,11 @@ function ContractorWorkflowPage() {
     history.find((lead) => lead.id === selectedId) ?? history[0] ?? null
 
   return (
-    <main className="page-wrap px-4 py-12">
-      <section className="mb-6">
-        <p className="island-kicker mb-2">Workflow</p>
-        <h1 className="display-title text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl">
-          {contractorName} &mdash; History
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm text-[var(--sea-ink-soft)]">
-          Log new leads as you generate them, then review each one against
-          our criteria, leave notes for the team, and submit it for approval.
-        </p>
-      </section>
+    <div>
+      <p className="mb-6 max-w-2xl text-sm text-[var(--sea-ink-soft)]">
+        Log new leads as you generate them, review them against our criteria,
+        leave notes, and submit for approval.
+      </p>
 
       <div className="mb-6">
         <AddLeadForm onCreate={createLead} />
@@ -167,9 +260,172 @@ function ContractorWorkflowPage() {
           )}
         </div>
       </div>
-    </main>
+    </div>
   )
 }
+
+// ─── Draft Email tab ──────────────────────────────────────────────────────────
+
+function DraftEmailTab() {
+  const { contractorId } = Route.useParams()
+  const { leads, saveDraftEmail } = useLeads()
+  const myLeads = sortByRecentlyUpdated(
+    leads.filter((lead) => lead.assignedTo === contractorId),
+  )
+  const [selectedId, setSelectedId] = useState<string | null>(
+    myLeads[0]?.id ?? null,
+  )
+  const selected =
+    myLeads.find((lead) => lead.id === selectedId) ?? myLeads[0] ?? null
+
+  return (
+    <div>
+      <p className="mb-6 max-w-2xl text-sm text-[var(--sea-ink-soft)]">
+        Draft an outreach email for one of your leads. An admin will review,
+        edit if needed, and send it on approval.
+      </p>
+
+      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+        <div className="demo-panel">
+          <h2 className="demo-section-title mb-3">
+            My Leads ({myLeads.length})
+          </h2>
+          <LeadQueueList
+            leads={myLeads}
+            selectedId={selected?.id ?? null}
+            onSelect={setSelectedId}
+            emptyMessage="No leads yet. Add one in the My Leads tab."
+          />
+        </div>
+
+        <div className="demo-panel">
+          {selected ? (
+            <DraftEmailForm
+              lead={selected}
+              onSave={(subject, body) =>
+                void saveDraftEmail(selected.id, subject, body)
+              }
+            />
+          ) : (
+            <p className="demo-muted text-sm">
+              Select a lead to draft an email.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DraftEmailForm({
+  lead,
+  onSave,
+}: {
+  lead: Lead
+  onSave: (subject: string, body: string) => void
+}) {
+  const [subject, setSubject] = useState(lead.draftEmailSubject)
+  const [body, setBody] = useState(lead.draftEmailBody)
+  const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const recipientEmail = lead.email || '(no email on file)'
+
+  async function handleSave() {
+    if (!subject.trim()) {
+      setError('Subject is required.')
+      return
+    }
+    if (!body.trim()) {
+      setError('Body is required.')
+      return
+    }
+    setError(null)
+    setSaving(true)
+    try {
+      onSave(subject, body)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div>
+      <div className="mb-4">
+        <h2 className="m-0 text-xl font-bold text-[var(--sea-ink)]">
+          {lead.name}
+        </h2>
+        {lead.company && (
+          <p className="m-0 text-sm text-[var(--sea-ink-soft)]">{lead.company}</p>
+        )}
+        <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
+          To: <span className="font-medium">{recipientEmail}</span>
+        </p>
+        {lead.emailStatus === 'draft' && lead.draftEmailCreatedAt && (
+          <p className="mt-1 text-xs text-[var(--lagoon-deep)]">
+            Draft saved &mdash; awaiting admin review
+          </p>
+        )}
+        {lead.emailStatus === 'sent' && (
+          <p className="mt-1 text-xs text-[var(--palm)] font-semibold">
+            Email already sent
+          </p>
+        )}
+      </div>
+
+      <div className="mb-4">
+        <label htmlFor="draft-subject" className="island-kicker mb-1 block">
+          Subject
+        </label>
+        <input
+          id="draft-subject"
+          type="text"
+          className="demo-input"
+          placeholder="e.g. Following up on your business…"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          disabled={lead.emailStatus === 'sent'}
+        />
+      </div>
+
+      <div className="mb-5">
+        <label htmlFor="draft-body" className="island-kicker mb-1 block">
+          Message
+        </label>
+        <textarea
+          id="draft-body"
+          className="demo-textarea min-h-[220px]"
+          placeholder="Write your outreach message here…"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          disabled={lead.emailStatus === 'sent'}
+        />
+      </div>
+
+      {error && (
+        <p className="mb-3 text-sm text-[#9f3030]" role="alert">
+          {error}
+        </p>
+      )}
+
+      {lead.emailStatus !== 'sent' && (
+        <button
+          type="button"
+          className="demo-button"
+          onClick={() => void handleSave()}
+          disabled={saving}
+        >
+          {saving ? 'Saving…' : saved ? 'Saved!' : 'Save Draft'}
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ─── Shared detail components ─────────────────────────────────────────────────
 
 function AddLeadForm({
   onCreate,

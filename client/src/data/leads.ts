@@ -5,7 +5,7 @@ export type LeadStatus =
   | 'completed'
   | 'rejected'
 
-export type EmailStatus = 'not_sent' | 'sent'
+export type EmailStatus = 'not_sent' | 'draft' | 'sent'
 
 export type AdminDecision = 'approved' | 'rejected' | null
 
@@ -37,6 +37,9 @@ export interface Lead {
   adminReviewedAt: string | null
   emailStatus: EmailStatus
   emailSentAt: string | null
+  draftEmailSubject: string
+  draftEmailBody: string
+  draftEmailCreatedAt: string | null
 }
 
 export const STATUS_META: Record<

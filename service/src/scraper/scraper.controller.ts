@@ -18,6 +18,7 @@ import type { AuthenticatedUser } from '../common/types/authenticated-user';
 import { AssignLeadDto } from './dto/assign-lead.dto';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { QueryLeadsDto } from './dto/query-leads.dto';
+import { SaveDraftEmailDto } from './dto/save-draft-email.dto';
 import { ToggleLeadCriterionDto } from './dto/toggle-lead-criterion.dto';
 import { UpdateLeadNotesDto } from './dto/update-lead-notes.dto';
 import { UpdateLeadStatusDto } from './dto/update-lead-status.dto';
@@ -102,6 +103,13 @@ export class ScraperController {
   @ApiOperation({ summary: "Update a lead's internal admin notes" })
   setLeadAdminNotes(@Param('id') id: string, @Body() dto: UpdateLeadNotesDto) {
     return this.scraperService.setLeadAdminNotes(id, dto.notes);
+  }
+
+  @Patch('leads/:id/draft-email')
+  @Roles(Role.Admin, Role.Contractor)
+  @ApiOperation({ summary: 'Save or update a draft outreach email for a lead' })
+  saveDraftEmail(@Param('id') id: string, @Body() dto: SaveDraftEmailDto) {
+    return this.scraperService.saveDraftEmail(id, dto.subject, dto.body);
   }
 
   @Patch('leads/:id/submit')

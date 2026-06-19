@@ -19,7 +19,7 @@ export const Route = createFileRoute('/approvals')({
 })
 
 function ApprovalsPage() {
-  const { leads, setAdminNotes, approveLead, sendBackToContractor, rejectLead } =
+  const { leads, setAdminNotes, saveDraftEmail, approveLead, sendBackToContractor, rejectLead } =
     useLeads()
   const { contractors } = useContractors()
   const queue = leads.filter((lead) => lead.status === 'pending_approval')
@@ -37,8 +37,8 @@ function ApprovalsPage() {
           Final Review
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-[var(--sea-ink-soft)]">
-          Check the contractor's findings, then approve to move the lead to
-          the completed pile and send the approval email.
+          Review the contractor's findings and edit the draft outreach email.
+          Approving will send the email automatically via SMTP.
         </p>
       </section>
 
@@ -63,6 +63,9 @@ function ApprovalsPage() {
               onAdminNotesChange={(notes) =>
                 void setAdminNotes(selected.id, notes)
               }
+              onSaveDraftEmail={(subject, body) =>
+                void saveDraftEmail(selected.id, subject, body)
+              }
               onApprove={() => void approveLead(selected.id)}
               onSendBack={() => void sendBackToContractor(selected.id)}
               onReject={() => void rejectLead(selected.id)}
@@ -82,6 +85,7 @@ function ApprovalDetail({
   lead,
   contractors,
   onAdminNotesChange,
+  onSaveDraftEmail,
   onApprove,
   onSendBack,
   onReject,
@@ -89,6 +93,7 @@ function ApprovalDetail({
   lead: Lead
   contractors: Array<User>
   onAdminNotesChange: (notes: string) => void
+  onSaveDraftEmail: (subject: string, body: string) => void
   onApprove: () => void
   onSendBack: () => void
   onReject: () => void
@@ -112,15 +117,15 @@ function ApprovalDetail({
       <dl className="mb-5 grid gap-3 sm:grid-cols-2">
         <div>
           <dt className="island-kicker mb-1">Email</dt>
-          <dd className="m-0 text-sm text-[var(--sea-ink)]">{lead.email}</dd>
+          <dd className="m-0 text-sm text-[var(--sea-ink)]">{lead.email || '—'}</dd>
         </div>
         <div>
           <dt className="island-kicker mb-1">Phone</dt>
-          <dd className="m-0 text-sm text-[var(--sea-ink)]">{lead.phone}</dd>
+          <dd className="m-0 text-sm text-[var(--sea-ink)]">{lead.phone || '—'}</dd>
         </div>
         <div>
           <dt className="island-kicker mb-1">Source</dt>
-          <dd className="m-0 text-sm text-[var(--sea-ink)]">{lead.source}</dd>
+          <dd className="m-0 text-sm text-[var(--sea-ink)]">{lead.source || '—'}</dd>
         </div>
         <div>
           <dt className="island-kicker mb-1">Date Added</dt>
@@ -157,7 +162,7 @@ function ApprovalDetail({
         </div>
       )}
 
-      <div className="mb-6">
+      <div className="mb-5">
         <h3 className="demo-section-title mb-2">Internal Notes</h3>
         <textarea
           className="demo-textarea"
@@ -167,7 +172,12 @@ function ApprovalDetail({
         />
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <DraftEmailEditor
+        lead={lead}
+        onSave={onSaveDraftEmail}
+      />
+
+      <div className="mt-6 flex flex-wrap gap-3">
         <button type="button" className="demo-button" onClick={onApprove}>
           Approve &amp; Send Email
         </button>
@@ -186,6 +196,132 @@ function ApprovalDetail({
           Reject
         </button>
       </div>
+    </div>
+  )
+}
+
+function DraftEmailEditor({
+  lead,
+  onSave,
+}: {
+  lead: Lead
+  onSave: (subject: string, body: string) => void
+}) {
+  const [subject, setSubject] = useState(lead.draftEmailSubject)
+  const [body, setBody] = useState(lead.draftEmailBody)
+  const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSave() {
+    if (!subject.trim()) {
+      setError('Subject is required.')
+      return
+    }
+    if (!body.trim()) {
+      setError('Body is required.')
+      return
+    }
+    setError(null)
+    setSaving(true)
+    try {
+      onSave(subject, body)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const hasDraft = lead.emailStatus === 'draft' || !!lead.draftEmailSubject
+
+  return (
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--sand)] p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h3 className="demo-section-title m-0">Outreach Email</h3>
+        {hasDraft && (
+          <span className="rounded-full bg-[var(--lagoon)] px-2.5 py-0.5 text-xs font-semibold text-white">
+            Draft
+          </span>
+        )}
+      </div>
+
+      {lead.draftEmailCreatedAt && (
+        <p className="mb-3 text-xs text-[var(--sea-ink-soft)]">
+          Draft submitted {formatDateTime(lead.draftEmailCreatedAt)} &mdash; edit
+          below before approving.
+        </p>
+      )}
+
+      {!hasDraft && (
+        <p className="mb-3 text-sm text-[var(--sea-ink-soft)]">
+          No draft yet. You can compose one here or approve without an email.
+        </p>
+      )}
+
+      <div className="mb-3">
+        <label
+          htmlFor="approval-email-to"
+          className="island-kicker mb-1 block"
+        >
+          To
+        </label>
+        <input
+          id="approval-email-to"
+          type="text"
+          className="demo-input"
+          value={lead.email || '(no email on file)'}
+          readOnly
+        />
+      </div>
+
+      <div className="mb-3">
+        <label
+          htmlFor="approval-email-subject"
+          className="island-kicker mb-1 block"
+        >
+          Subject
+        </label>
+        <input
+          id="approval-email-subject"
+          type="text"
+          className="demo-input"
+          placeholder="Email subject…"
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+        />
+      </div>
+
+      <div className="mb-3">
+        <label
+          htmlFor="approval-email-body"
+          className="island-kicker mb-1 block"
+        >
+          Message
+        </label>
+        <textarea
+          id="approval-email-body"
+          className="demo-textarea min-h-[180px]"
+          placeholder="Email body…"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+        />
+      </div>
+
+      {error && (
+        <p className="mb-2 text-sm text-[#9f3030]" role="alert">
+          {error}
+        </p>
+      )}
+
+      <button
+        type="button"
+        className="demo-button demo-button-secondary"
+        onClick={() => void handleSave()}
+        disabled={saving}
+      >
+        {saving ? 'Saving…' : saved ? 'Saved!' : 'Save Email Draft'}
+      </button>
     </div>
   )
 }

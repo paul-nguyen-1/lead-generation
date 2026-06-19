@@ -1,10 +1,12 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { EmailService } from '../email/email.service';
 import { Role } from '../common/enums/role.enum';
 import { UsersService } from '../users/users.service';
 import { CreateLeadDto } from './dto/create-lead.dto';
@@ -36,10 +38,13 @@ export interface ContractorAnalytics {
 
 @Injectable()
 export class ScraperService {
+  private readonly logger = new Logger(ScraperService.name);
+
   constructor(
     @InjectModel(Lead.name)
     private readonly leadModel: Model<LeadDocument>,
     private readonly usersService: UsersService,
+    private readonly emailService: EmailService,
   ) {}
 
   async createLead(dto: CreateLeadDto, userId: string): Promise<LeadDocument> {
@@ -142,6 +147,27 @@ export class ScraperService {
     return lead;
   }
 
+  async saveDraftEmail(
+    id: string,
+    subject: string,
+    body: string,
+  ): Promise<LeadDocument> {
+    const lead = await this.leadModel
+      .findByIdAndUpdate(
+        id,
+        {
+          draftEmailSubject: subject,
+          draftEmailBody: body,
+          draftEmailCreatedAt: new Date(),
+          emailStatus: EmailStatus.Draft,
+        },
+        { new: true },
+      )
+      .exec();
+    if (!lead) throw new NotFoundException('Lead not found');
+    return lead;
+  }
+
   async setLeadAdminNotes(id: string, notes: string): Promise<LeadDocument> {
     const lead = await this.leadModel
       .findByIdAndUpdate(id, { adminNotes: notes }, { new: true })
@@ -179,6 +205,8 @@ export class ScraperService {
 
   async approveLead(id: string): Promise<LeadDocument> {
     const now = new Date();
+    const existing = await this.findLead(id);
+
     const lead = await this.leadModel
       .findByIdAndUpdate(
         id,
@@ -193,6 +221,19 @@ export class ScraperService {
       )
       .exec();
     if (!lead) throw new NotFoundException('Lead not found');
+
+    if (existing.draftEmailSubject && existing.email) {
+      try {
+        await this.emailService.sendEmail({
+          to: existing.email,
+          subject: existing.draftEmailSubject,
+          body: existing.draftEmailBody,
+        });
+      } catch (err) {
+        this.logger.error(`Failed to send approval email for lead ${id}`, err);
+      }
+    }
+
     return lead;
   }
 

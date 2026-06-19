@@ -35,6 +35,7 @@ interface LeadsContextValue {
   toggleCriterion: (leadId: string, criterionId: string) => Promise<void>
   setContractorNotes: (leadId: string, notes: string) => Promise<void>
   setAdminNotes: (leadId: string, notes: string) => Promise<void>
+  saveDraftEmail: (leadId: string, subject: string, body: string) => Promise<void>
   submitForApproval: (leadId: string) => Promise<void>
   sendBackToContractor: (leadId: string) => Promise<void>
   approveLead: (leadId: string) => Promise<void>
@@ -63,6 +64,9 @@ interface ApiLead {
   adminReviewedAt: string | null
   emailStatus: EmailStatus
   emailSentAt: string | null
+  draftEmailSubject: string
+  draftEmailBody: string
+  draftEmailCreatedAt: string | null
   createdAt: string
   updatedAt: string
 }
@@ -90,6 +94,9 @@ function mapLead(raw: ApiLead): Lead {
     adminReviewedAt: raw.adminReviewedAt,
     emailStatus: raw.emailStatus,
     emailSentAt: raw.emailSentAt,
+    draftEmailSubject: raw.draftEmailSubject ?? '',
+    draftEmailBody: raw.draftEmailBody ?? '',
+    draftEmailCreatedAt: raw.draftEmailCreatedAt ?? null,
   }
 }
 
@@ -174,6 +181,14 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     applyUpdate(leadId, updated)
   }
 
+  async function saveDraftEmail(leadId: string, subject: string, body: string) {
+    const updated = await apiFetch<ApiLead>(
+      `/scraper/leads/${leadId}/draft-email`,
+      { method: 'PATCH', body: { subject, body } },
+    )
+    applyUpdate(leadId, updated)
+  }
+
   async function submitForApproval(leadId: string) {
     const updated = await apiFetch<ApiLead>(
       `/scraper/leads/${leadId}/submit`,
@@ -215,6 +230,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     toggleCriterion,
     setContractorNotes,
     setAdminNotes,
+    saveDraftEmail,
     submitForApproval,
     sendBackToContractor,
     approveLead,
