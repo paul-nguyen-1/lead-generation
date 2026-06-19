@@ -1,8 +1,12 @@
+import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useLeads } from '#/lib/leads-store'
+import { useContractors } from '#/lib/contractors'
 import { formatDate, formatDateTime } from '#/lib/format'
-import { Pill } from '#/components/StatusPill'
+import StatusPill, { Pill } from '#/components/StatusPill'
+import CriteriaChecklist from '#/components/CriteriaChecklist'
 import RequireAuth from '#/components/RequireAuth'
+import type { Lead } from '#/data/leads'
 
 export const Route = createFileRoute('/completed')({
   component: () => (
@@ -14,8 +18,12 @@ export const Route = createFileRoute('/completed')({
 
 function CompletedPage() {
   const { leads } = useLeads()
+  const { contractors } = useContractors()
   const approved = leads.filter((lead) => lead.status === 'completed')
   const rejected = leads.filter((lead) => lead.status === 'rejected')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selected =
+    [...approved, ...rejected].find((lead) => lead.id === selectedId) ?? null
 
   return (
     <main className="page-wrap px-4 py-12">
@@ -26,7 +34,8 @@ function CompletedPage() {
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-[var(--sea-ink-soft)]">
           Leads that have finished the review pipeline, including approval
-          emails sent to the team.
+          emails sent to the team. Select a lead to view its full review
+          history.
         </p>
       </section>
 
@@ -45,6 +54,7 @@ function CompletedPage() {
                   <th>Internal Notes</th>
                   <th>Approved</th>
                   <th>Email</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -78,6 +88,15 @@ function CompletedPage() {
                         <Pill label="Not sent" color="#64748b" />
                       )}
                     </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="demo-button demo-button-secondary"
+                        onClick={() => setSelectedId(lead.id)}
+                      >
+                        View History
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -86,7 +105,7 @@ function CompletedPage() {
         )}
       </section>
 
-      <section className="island-shell rounded-2xl p-6">
+      <section className="island-shell mb-6 rounded-2xl p-6">
         <h2 className="m-0 mb-3 text-lg font-bold text-[var(--sea-ink)]">
           Rejected ({rejected.length})
         </h2>
@@ -100,6 +119,7 @@ function CompletedPage() {
                   <th>Lead</th>
                   <th>Reason</th>
                   <th>Reviewed</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -123,6 +143,15 @@ function CompletedPage() {
                         ? formatDateTime(lead.adminReviewedAt)
                         : '—'}
                     </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="demo-button demo-button-secondary"
+                        onClick={() => setSelectedId(lead.id)}
+                      >
+                        View History
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -130,6 +159,162 @@ function CompletedPage() {
           </div>
         )}
       </section>
+
+      {selected && (
+        <section className="island-shell rounded-2xl p-6">
+          <LeadHistory
+            lead={selected}
+            contractorName={
+              contractors.find((c) => c.id === selected.assignedTo)?.name ??
+              'Unassigned'
+            }
+            onClose={() => setSelectedId(null)}
+          />
+        </section>
+      )}
     </main>
+  )
+}
+
+function LeadHistory({
+  lead,
+  contractorName,
+  onClose,
+}: {
+  lead: Lead
+  contractorName: string
+  onClose: () => void
+}) {
+  const decisionLabel =
+    lead.adminDecision === 'approved' ? 'Approved' : 'Rejected'
+
+  return (
+    <div>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="m-0 text-xl font-bold text-[var(--sea-ink)]">
+            {lead.name}
+          </h2>
+          {lead.company && (
+            <p className="m-0 text-sm text-[var(--sea-ink-soft)]">
+              {lead.company}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <StatusPill status={lead.status} />
+          <button
+            type="button"
+            className="demo-button demo-button-secondary"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+
+      <dl className="mb-5 grid gap-3 sm:grid-cols-2">
+        <div>
+          <dt className="island-kicker mb-1">Email</dt>
+          <dd className="m-0 text-sm text-[var(--sea-ink)]">
+            {lead.email || '—'}
+          </dd>
+        </div>
+        <div>
+          <dt className="island-kicker mb-1">Phone</dt>
+          <dd className="m-0 text-sm text-[var(--sea-ink)]">
+            {lead.phone || '—'}
+          </dd>
+        </div>
+        <div>
+          <dt className="island-kicker mb-1">Address</dt>
+          <dd className="m-0 text-sm text-[var(--sea-ink)]">
+            {lead.address || '—'}
+          </dd>
+        </div>
+        <div>
+          <dt className="island-kicker mb-1">Website</dt>
+          <dd className="m-0 text-sm text-[var(--sea-ink)]">
+            {lead.website || '—'}
+          </dd>
+        </div>
+        <div>
+          <dt className="island-kicker mb-1">Source</dt>
+          <dd className="m-0 text-sm text-[var(--sea-ink)]">
+            {lead.source || '—'}
+          </dd>
+        </div>
+        <div>
+          <dt className="island-kicker mb-1">Submitted By</dt>
+          <dd className="m-0 text-sm text-[var(--sea-ink)]">
+            {contractorName}
+          </dd>
+        </div>
+      </dl>
+
+      {lead.notes && (
+        <div className="mb-5">
+          <h3 className="demo-section-title mb-2">Lead Details</h3>
+          <p className="demo-card m-0 text-sm text-[var(--sea-ink-soft)]">
+            {lead.notes}
+          </p>
+        </div>
+      )}
+
+      <div className="mb-5">
+        <h3 className="demo-section-title mb-2">Timeline</h3>
+        <ul className="m-0 flex list-none flex-col gap-2 p-0">
+          <li className="demo-list-item flex items-center justify-between gap-3 text-sm text-[var(--sea-ink)]">
+            <span>Logged</span>
+            <span className="text-[var(--sea-ink-soft)]">
+              {formatDateTime(lead.dateAdded)}
+            </span>
+          </li>
+          <li className="demo-list-item flex items-center justify-between gap-3 text-sm text-[var(--sea-ink)]">
+            <span>Contractor Review</span>
+            <span className="text-[var(--sea-ink-soft)]">
+              {lead.contractorReviewedAt
+                ? formatDateTime(lead.contractorReviewedAt)
+                : '—'}
+            </span>
+          </li>
+          <li className="demo-list-item flex items-center justify-between gap-3 text-sm text-[var(--sea-ink)]">
+            <span>Admin Decision &mdash; {decisionLabel}</span>
+            <span className="text-[var(--sea-ink-soft)]">
+              {lead.adminReviewedAt
+                ? formatDateTime(lead.adminReviewedAt)
+                : '—'}
+            </span>
+          </li>
+          <li className="demo-list-item flex items-center justify-between gap-3 text-sm text-[var(--sea-ink)]">
+            <span>Approval Email</span>
+            <span className="text-[var(--sea-ink-soft)]">
+              {lead.emailStatus === 'sent' && lead.emailSentAt
+                ? formatDateTime(lead.emailSentAt)
+                : 'Not sent'}
+            </span>
+          </li>
+        </ul>
+      </div>
+
+      <div className="mb-5">
+        <h3 className="demo-section-title mb-2">Review Criteria</h3>
+        <CriteriaChecklist criteria={lead.criteria} />
+      </div>
+
+      <div className="mb-5">
+        <h3 className="demo-section-title mb-2">Contractor Notes</h3>
+        <p className="demo-card m-0 text-sm text-[var(--sea-ink-soft)]">
+          {lead.contractorNotes || 'No notes yet.'}
+        </p>
+      </div>
+
+      <div>
+        <h3 className="demo-section-title mb-2">Internal Notes</h3>
+        <p className="demo-card m-0 text-sm text-[var(--sea-ink-soft)]">
+          {lead.adminNotes || 'No notes yet.'}
+        </p>
+      </div>
+    </div>
   )
 }
