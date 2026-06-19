@@ -50,21 +50,25 @@ export class LeadsService {
   ) {}
 
   async createLead(dto: CreateLeadDto, userId: string): Promise<LeadDocument> {
-    if (!dto.businessName && !dto.contactName) {
+    if (!dto.firstName && !dto.lastName && !dto.businessName) {
       throw new BadRequestException(
-        'At least one of businessName or contactName is required',
+        'At least one of firstName, lastName, or businessName is required',
       );
     }
 
     return this.leadModel.create({
-      businessName: dto.businessName ?? null,
-      contactName: dto.contactName ?? null,
+      firstName: dto.firstName ?? null,
+      lastName: dto.lastName ?? null,
+      jobTitle: dto.jobTitle ?? null,
       email: dto.email ?? null,
-      phone: dto.phone ?? null,
-      address: dto.address ?? null,
+      linkedinUrl: dto.linkedinUrl ?? null,
+      businessName: dto.businessName ?? null,
       website: dto.website ?? null,
-      source: dto.source ?? null,
+      address: dto.address ?? null,
+      phone: dto.phone ?? null,
+      industry: dto.industry ?? null,
       notes: dto.notes ?? '',
+      extraFields: dto.extraFields ?? [],
       createdBy: new Types.ObjectId(userId),
       assignedTo: new Types.ObjectId(userId),
     });
