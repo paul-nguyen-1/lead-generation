@@ -101,6 +101,22 @@ export class AuthService {
     return { ...tokens, user: this.usersService.toSafeUser(user) };
   }
 
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.usersService.findById(userId);
+    if (!user) throw new UnauthorizedException();
+
+    const matches = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!matches) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    await this.usersService.updatePassword(userId, newPassword);
+  }
+
   async logout(userId: string): Promise<void> {
     await this.usersService.setRefreshTokenHash(userId, null);
   }

@@ -95,6 +95,11 @@ export class UsersService implements OnModuleInit {
     });
   }
 
+  async updatePassword(userId: string, newPassword: string): Promise<void> {
+    const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    await this.userModel.findByIdAndUpdate(userId, { passwordHash }).exec();
+  }
+
   async setRefreshTokenHash(
     userId: string,
     refreshTokenHash: string | null,
