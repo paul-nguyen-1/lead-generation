@@ -5,9 +5,9 @@ import { useContractors } from '#/lib/contractors'
 import { apiFetch } from '#/lib/api'
 import { useEffect } from 'react'
 import { formatDate, formatDateTime } from '#/lib/format'
-import StatusPill, { Pill } from '#/components/StatusPill'
-import CriteriaChecklist from '#/components/CriteriaChecklist'
+import { Pill } from '#/components/StatusPill'
 import RequireAuth from '#/components/RequireAuth'
+import { LeadDetailHeader, LeadFieldsGrid, LeadNotes } from '#/components/LeadDetailFields'
 import type { Lead } from '#/data/leads'
 import type { User } from '#/lib/auth-store'
 
@@ -153,7 +153,7 @@ function CompletedPage() {
                       )}
                     </td>
                     <td className="text-sm text-[var(--sea-ink-soft)]">
-                      {lead.adminNotes || lead.contractorNotes || '—'}
+                      {lead.adminNotes || '—'}
                     </td>
                     <td className="text-sm text-[var(--sea-ink-soft)]">
                       {lead.adminReviewedAt
@@ -219,19 +219,9 @@ function LeadHistory({
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="m-0 text-xl font-bold text-[var(--sea-ink)]">
-            {lead.name}
-          </h2>
-          {lead.company && (
-            <p className="m-0 text-sm text-[var(--sea-ink-soft)]">
-              {lead.company}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <StatusPill status={lead.status} />
+      <LeadDetailHeader
+        lead={lead}
+        right={
           <button
             type="button"
             className="demo-button demo-button-secondary"
@@ -239,54 +229,12 @@ function LeadHistory({
           >
             Close
           </button>
-        </div>
-      </div>
+        }
+      />
 
-      <dl className="mb-5 grid gap-3 sm:grid-cols-2">
-        <div>
-          <dt className="island-kicker mb-1">Email</dt>
-          <dd className="m-0 text-sm text-[var(--sea-ink)]">
-            {lead.email || '—'}
-          </dd>
-        </div>
-        <div>
-          <dt className="island-kicker mb-1">Phone</dt>
-          <dd className="m-0 text-sm text-[var(--sea-ink)]">
-            {lead.phone || '—'}
-          </dd>
-        </div>
-        <div>
-          <dt className="island-kicker mb-1">Address</dt>
-          <dd className="m-0 text-sm text-[var(--sea-ink)]">
-            {lead.address || '—'}
-          </dd>
-        </div>
-        <div>
-          <dt className="island-kicker mb-1">Website</dt>
-          <dd className="m-0 text-sm text-[var(--sea-ink)]">
-            {lead.website || '—'}
-          </dd>
-        </div>
-        <div>
-          <dt className="island-kicker mb-1">Source</dt>
-          <dd className="m-0 text-sm text-[var(--sea-ink)]">
-            {lead.source || '—'}
-          </dd>
-        </div>
-        <div>
-          <dt className="island-kicker mb-1">Logged By</dt>
-          <dd className="m-0 text-sm text-[var(--sea-ink)]">{loggedByName}</dd>
-        </div>
-      </dl>
+      <LeadFieldsGrid lead={lead} trailing={[{ label: 'Logged By', value: loggedByName }]} />
 
-      {lead.notes && (
-        <div className="mb-5">
-          <h3 className="demo-section-title mb-2">Lead Details</h3>
-          <p className="demo-card m-0 text-sm text-[var(--sea-ink-soft)]">
-            {lead.notes}
-          </p>
-        </div>
-      )}
+      <LeadNotes notes={lead.notes} />
 
       <div className="mb-5">
         <h3 className="demo-section-title mb-2">Timeline</h3>
@@ -320,18 +268,6 @@ function LeadHistory({
             }
           />
         </ul>
-      </div>
-
-      <div className="mb-5">
-        <h3 className="demo-section-title mb-2">Review Criteria</h3>
-        <CriteriaChecklist criteria={lead.criteria} />
-      </div>
-
-      <div className="mb-5">
-        <h3 className="demo-section-title mb-2">Contractor Notes</h3>
-        <p className="demo-card m-0 text-sm text-[var(--sea-ink-soft)]">
-          {lead.contractorNotes || 'No notes yet.'}
-        </p>
       </div>
 
       <div>

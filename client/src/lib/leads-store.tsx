@@ -41,9 +41,6 @@ interface LeadsContextValue {
   refetch: () => void
   createLead: (input: CreateLeadInput) => Promise<void>
   assignLead: (leadId: string, contractorId: string) => Promise<void>
-  toggleCriterion: (leadId: string, criterionId: string) => Promise<void>
-  setContractorNotes: (leadId: string, notes: string) => Promise<void>
-  setAdminNotes: (leadId: string, notes: string) => Promise<void>
   saveDraftEmail: (leadId: string, subject: string, body: string) => Promise<void>
   autoAssignDraft: (leadId: string) => Promise<void>
   submitForApproval: (leadId: string) => Promise<void>
@@ -194,30 +191,6 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     applyUpdate(leadId, updated)
   }
 
-  async function toggleCriterion(leadId: string, criterionId: string) {
-    const updated = await apiFetch<ApiLead>(
-      `/leads/${leadId}/criteria`,
-      { method: 'PATCH', body: { criterionId } },
-    )
-    applyUpdate(leadId, updated)
-  }
-
-  async function setContractorNotes(leadId: string, notes: string) {
-    const updated = await apiFetch<ApiLead>(
-      `/leads/${leadId}/contractor-notes`,
-      { method: 'PATCH', body: { notes } },
-    )
-    applyUpdate(leadId, updated)
-  }
-
-  async function setAdminNotes(leadId: string, notes: string) {
-    const updated = await apiFetch<ApiLead>(
-      `/leads/${leadId}/admin-notes`,
-      { method: 'PATCH', body: { notes } },
-    )
-    applyUpdate(leadId, updated)
-  }
-
   async function saveDraftEmail(leadId: string, subject: string, body: string) {
     const updated = await apiFetch<ApiLead>(
       `/leads/${leadId}/draft-email`,
@@ -272,9 +245,6 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     refetch,
     createLead,
     assignLead,
-    toggleCriterion,
-    setContractorNotes,
-    setAdminNotes,
     saveDraftEmail,
     autoAssignDraft,
     submitForApproval,

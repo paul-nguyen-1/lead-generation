@@ -4,10 +4,10 @@ import { useLeads } from '#/lib/leads-store'
 import { useContractors } from '#/lib/contractors'
 import { useAuth, type User } from '#/lib/auth-store'
 import { type Lead } from '#/data/leads'
-import { formatDate, formatDateTime } from '#/lib/format'
-import StatusPill from '#/components/StatusPill'
+import { formatDateTime } from '#/lib/format'
 import LeadQueueList from '#/components/LeadQueueList'
 import RequireAuth from '#/components/RequireAuth'
+import { LeadDetailHeader, LeadFieldsGrid, LeadNotes } from '#/components/LeadDetailFields'
 
 export const Route = createFileRoute('/approvals')({
   component: () => (
@@ -127,102 +127,19 @@ function ApprovalDetail({
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="m-0 text-xl font-bold text-(--sea-ink)">
-            {lead.name}
-          </h2>
-          {lead.company && (
-            <p className="m-0 text-sm text-(--sea-ink-soft)">
-              {lead.company}
-            </p>
-          )}
-        </div>
-        <StatusPill status={lead.status} />
-      </div>
+      <LeadDetailHeader lead={lead} />
 
-      <dl className="mb-5 grid gap-3 sm:grid-cols-2">
-        {lead.jobTitle && (
-          <div>
-            <dt className="island-kicker mb-1">Job Title</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">{lead.jobTitle}</dd>
-          </div>
-        )}
-        {lead.email && (
-          <div>
-            <dt className="island-kicker mb-1">Email Address</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">{lead.email}</dd>
-          </div>
-        )}
-        {lead.linkedinUrl && (
-          <div className="sm:col-span-2">
-            <dt className="island-kicker mb-1">LinkedIn URL</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">
-              <a href={lead.linkedinUrl} target="_blank" rel="noreferrer" className="underline">
-                {lead.linkedinUrl}
-              </a>
-            </dd>
-          </div>
-        )}
-        {lead.company && (
-          <div>
-            <dt className="island-kicker mb-1">Company Name</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">{lead.company}</dd>
-          </div>
-        )}
-        {lead.website && (
-          <div>
-            <dt className="island-kicker mb-1">Website URL</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">
-              <a href={lead.website} target="_blank" rel="noreferrer" className="underline">
-                {lead.website}
-              </a>
-            </dd>
-          </div>
-        )}
-        {lead.address && (
-          <div className="sm:col-span-2">
-            <dt className="island-kicker mb-1">Full Address</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">{lead.address}</dd>
-          </div>
-        )}
-        {lead.phone && (
-          <div>
-            <dt className="island-kicker mb-1">Phone Number</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">{lead.phone}</dd>
-          </div>
-        )}
-        {lead.industry && (
-          <div>
-            <dt className="island-kicker mb-1">Industry</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">{lead.industry}</dd>
-          </div>
-        )}
-        {lead.notes && (
-          <div className="sm:col-span-2">
-            <dt className="island-kicker mb-1">Lead Details</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">{lead.notes}</dd>
-          </div>
-        )}
-        {lead.extraFields.map((field, i) => (
-          field.label.trim() ? (
-            <div key={i}>
-              <dt className="island-kicker mb-1">{field.label}</dt>
-              <dd className="m-0 text-sm text-(--sea-ink)">{field.value || '—'}</dd>
-            </div>
-          ) : null
-        ))}
-        <div>
-          <dt className="island-kicker mb-1">Date Added</dt>
-          <dd className="m-0 text-sm text-(--sea-ink)">{formatDate(lead.dateAdded)}</dd>
-        </div>
-        <div>
-          <dt className="island-kicker mb-1">Submitted By</dt>
-          <dd className="m-0 text-sm text-(--sea-ink)">
-            {contractors.find((c) => c.id === lead.assignedTo)?.name ?? 'Unassigned'}
-          </dd>
-        </div>
-      </dl>
+      <LeadFieldsGrid
+        lead={lead}
+        trailing={[
+          {
+            label: 'Submitted By',
+            value: contractors.find((c) => c.id === lead.assignedTo)?.name ?? 'Unassigned',
+          },
+        ]}
+      />
+
+      <LeadNotes notes={lead.notes} />
 
       <DraftEmailEditor
         lead={lead}

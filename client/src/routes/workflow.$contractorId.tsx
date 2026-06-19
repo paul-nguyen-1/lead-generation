@@ -5,10 +5,11 @@ import { useAuth } from '#/lib/auth-store'
 import { useContractors } from '#/lib/contractors'
 import RequireAuth from '#/components/RequireAuth'
 import { type Lead } from '#/data/leads'
-import { formatDate, formatDateTime } from '#/lib/format'
+import { formatDateTime } from '#/lib/format'
 import { ApiError } from '#/lib/api'
-import StatusPill, { Pill } from '#/components/StatusPill'
+import { Pill } from '#/components/StatusPill'
 import LeadQueueList from '#/components/LeadQueueList'
+import { LeadDetailHeader, LeadFieldsGrid, LeadNotes } from '#/components/LeadDetailFields'
 
 export const Route = createFileRoute('/workflow/$contractorId')({
   component: () => {
@@ -834,117 +835,16 @@ function AddLeadForm({
   )
 }
 
-function LeadDetail({
-  lead,
-  children,
-}: {
-  lead: Lead
-  children?: React.ReactNode
-}) {
+function LeadDetailReadOnly({ lead }: { lead: Lead }) {
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="m-0 text-xl font-bold text-(--sea-ink)">
-            {lead.name}
-          </h2>
-          {lead.company && (
-            <p className="m-0 text-sm text-(--sea-ink-soft)">
-              {lead.company}
-            </p>
-          )}
-        </div>
-        <StatusPill status={lead.status} />
-      </div>
-
-      <dl className="mb-5 grid gap-3 sm:grid-cols-2">
-        {lead.jobTitle && (
-          <div>
-            <dt className="island-kicker mb-1">Job Title</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">{lead.jobTitle}</dd>
-          </div>
-        )}
-        {lead.email && (
-          <div>
-            <dt className="island-kicker mb-1">Email Address</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">{lead.email}</dd>
-          </div>
-        )}
-        {lead.linkedinUrl && (
-          <div className="sm:col-span-2">
-            <dt className="island-kicker mb-1">LinkedIn URL</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">
-              <a href={lead.linkedinUrl} target="_blank" rel="noreferrer" className="underline">
-                {lead.linkedinUrl}
-              </a>
-            </dd>
-          </div>
-        )}
-        {lead.company && (
-          <div>
-            <dt className="island-kicker mb-1">Company Name</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">{lead.company}</dd>
-          </div>
-        )}
-        {lead.website && (
-          <div>
-            <dt className="island-kicker mb-1">Website URL</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">
-              <a href={lead.website} target="_blank" rel="noreferrer" className="underline">
-                {lead.website}
-              </a>
-            </dd>
-          </div>
-        )}
-        {lead.address && (
-          <div className="sm:col-span-2">
-            <dt className="island-kicker mb-1">Full Address</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">{lead.address}</dd>
-          </div>
-        )}
-        {lead.phone && (
-          <div>
-            <dt className="island-kicker mb-1">Phone Number</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">{lead.phone}</dd>
-          </div>
-        )}
-        {lead.industry && (
-          <div>
-            <dt className="island-kicker mb-1">Industry</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">{lead.industry}</dd>
-          </div>
-        )}
-        <div>
-          <dt className="island-kicker mb-1">Date Added</dt>
-          <dd className="m-0 text-sm text-(--sea-ink)">{formatDate(lead.dateAdded)}</dd>
-        </div>
-        <div>
-          <dt className="island-kicker mb-1">Last Updated</dt>
-          <dd className="m-0 text-sm text-(--sea-ink)">{formatDateTime(lead.dateUpdated)}</dd>
-        </div>
-        {lead.extraFields.map((field, i) => (
-          <div key={i}>
-            <dt className="island-kicker mb-1">{field.label}</dt>
-            <dd className="m-0 text-sm text-(--sea-ink)">{field.value || '—'}</dd>
-          </div>
-        ))}
-      </dl>
-
-      {lead.notes && (
-        <div className="mb-5">
-          <h3 className="demo-section-title mb-2">Lead Details</h3>
-          <p className="demo-card m-0 text-sm text-(--sea-ink-soft)">
-            {lead.notes}
-          </p>
-        </div>
-      )}
-
-      {children}
+      <LeadDetailHeader lead={lead} />
+      <LeadFieldsGrid
+        lead={lead}
+        trailing={[{ label: 'Last Updated', value: formatDateTime(lead.dateUpdated) }]}
+      />
+      <LeadNotes notes={lead.notes} />
     </div>
   )
-}
-
-function LeadDetailReadOnly({ lead }: { lead: Lead }) {
-  return <LeadDetail lead={lead} />
 }
 
