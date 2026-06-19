@@ -8,6 +8,7 @@ import { formatDate, formatDateTime } from '#/lib/format'
 import { Pill } from '#/components/StatusPill'
 import RequireAuth from '#/components/RequireAuth'
 import { LeadDetailHeader, LeadFieldsGrid, LeadNotes } from '#/components/LeadDetailFields'
+import { TableSkeleton } from '#/components/Skeleton'
 import type { Lead } from '#/data/leads'
 import type { User } from '#/lib/auth-store'
 
@@ -20,7 +21,7 @@ export const Route = createFileRoute('/completed')({
 })
 
 function CompletedPage() {
-  const { leads } = useLeads()
+  const { leads, loading } = useLeads()
   const { contractors } = useContractors()
   const [admins, setAdmins] = useState<Array<User>>([])
   const approved = leads.filter((lead) => lead.status === 'completed')
@@ -60,7 +61,9 @@ function CompletedPage() {
         <h2 className="m-0 mb-3 text-lg font-bold text-[var(--sea-ink)]">
           Approved ({approved.length})
         </h2>
-        {approved.length === 0 ? (
+        {loading ? (
+          <TableSkeleton columns={5} rows={4} />
+        ) : approved.length === 0 ? (
           <p className="demo-muted text-sm">No approved leads yet.</p>
         ) : (
           <div className="demo-table-shell">
@@ -126,7 +129,9 @@ function CompletedPage() {
         <h2 className="m-0 mb-3 text-lg font-bold text-[var(--sea-ink)]">
           Rejected ({rejected.length})
         </h2>
-        {rejected.length === 0 ? (
+        {loading ? (
+          <TableSkeleton columns={4} rows={3} />
+        ) : rejected.length === 0 ? (
           <p className="demo-muted text-sm">No rejected leads.</p>
         ) : (
           <div className="demo-table-shell">

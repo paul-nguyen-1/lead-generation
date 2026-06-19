@@ -6,6 +6,7 @@ import { type User } from '#/lib/auth-store'
 import { type Lead } from '#/data/leads'
 import { apiFetch, ApiError } from '#/lib/api'
 import RequireAuth from '#/components/RequireAuth'
+import Skeleton, { TableSkeleton } from '#/components/Skeleton'
 
 export const Route = createFileRoute('/drafts')({
   component: () => (
@@ -17,7 +18,8 @@ export const Route = createFileRoute('/drafts')({
 
 function DraftsPage() {
   const { leads, loading: leadsLoading, refetch } = useLeads()
-  const { contractors } = useContractors()
+  const { contractors, loading: contractorsLoading } = useContractors()
+  const loading = leadsLoading || contractorsLoading
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [assigning, setAssigning] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -111,8 +113,8 @@ function DraftsPage() {
           <h2 className="demo-section-title mb-3">
             Unassigned Queue ({draftQueue.length})
           </h2>
-          {leadsLoading ? (
-            <p className="demo-muted p-4 text-sm">Loading…</p>
+          {loading ? (
+            <TableSkeleton columns={4} rows={4} />
           ) : draftQueue.length === 0 ? (
             <p className="demo-muted p-4 text-sm">
               No leads pending draft assignment.
@@ -180,7 +182,9 @@ function DraftsPage() {
 
         {/* Right — assignment panel */}
         <div className="demo-panel">
-          {selectedLead ? (
+          {loading ? (
+            <DraftersPanelSkeleton />
+          ) : selectedLead ? (
             <ManualAssignPanel
               lead={selectedLead}
               contractors={contractors}
@@ -197,6 +201,21 @@ function DraftsPage() {
         </div>
       </div>
     </main>
+  )
+}
+
+function DraftersPanelSkeleton() {
+  return (
+    <div>
+      <Skeleton className="mb-3 h-5 w-44" />
+      <Skeleton className="mb-1.5 h-3 w-full" />
+      <Skeleton className="mb-4 h-3 w-2/3" />
+      <div className="flex flex-col gap-2">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-10 w-full rounded-lg" />
+        ))}
+      </div>
+    </div>
   )
 }
 

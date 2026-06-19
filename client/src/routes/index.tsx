@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useContractorAnalytics } from '#/lib/contractor-analytics'
 import RequireAuth from '#/components/RequireAuth'
+import { TableSkeleton } from '#/components/Skeleton'
 
 export const Route = createFileRoute('/')({
   component: () => (
@@ -27,57 +28,61 @@ function App() {
       </section>
 
       <section className="island-shell rounded-2xl p-6">
-        <div className="demo-table-shell">
-          <table className="demo-table">
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Contractor</th>
-                <th>Total Leads</th>
-                <th>Completed</th>
-                <th>Rejected</th>
-                <th>In Progress</th>
-                <th>Drafts</th>
-                <th>Approval Rate</th>
-                <th>Leads (Last 7 Days)</th>
-                <th>Avg. Review Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contractors.map((contractor) => (
-                <tr key={contractor.id}>
-                  <td className="font-semibold text-[var(--sea-ink)]">
-                    #{contractor.rank}
-                  </td>
-                  <td className="font-semibold text-[var(--sea-ink)]">
-                    {contractor.name}
-                  </td>
-                  <td>{contractor.totalLeads}</td>
-                  <td>{contractor.completedLeads}</td>
-                  <td>{contractor.rejectedLeads}</td>
-                  <td>{contractor.inProgressLeads}</td>
-                  <td>{contractor.draftLeads}</td>
-                  <td>
-                    {contractor.approvalRate !== null
-                      ? `${contractor.approvalRate.toString()}%`
-                      : '—'}
-                  </td>
-                  <td>{contractor.leadsLast7Days}</td>
-                  <td>
-                    {contractor.avgReviewHours !== null
-                      ? `${contractor.avgReviewHours.toString()}h`
-                      : '—'}
-                  </td>
+        {loading ? (
+          <TableSkeleton columns={10} rows={5} />
+        ) : (
+          <div className="demo-table-shell">
+            <table className="demo-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Contractor</th>
+                  <th>Total Leads</th>
+                  <th>Completed</th>
+                  <th>Rejected</th>
+                  <th>In Progress</th>
+                  <th>Drafts</th>
+                  <th>Approval Rate</th>
+                  <th>Leads (Last 7 Days)</th>
+                  <th>Avg. Review Time</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          {!loading && contractors.length === 0 && (
-            <p className="demo-muted p-4 text-sm">
-              No contractors have logged any leads yet.
-            </p>
-          )}
-        </div>
+              </thead>
+              <tbody>
+                {contractors.map((contractor) => (
+                  <tr key={contractor.id}>
+                    <td className="font-semibold text-[var(--sea-ink)]">
+                      #{contractor.rank}
+                    </td>
+                    <td className="font-semibold text-[var(--sea-ink)]">
+                      {contractor.name}
+                    </td>
+                    <td>{contractor.totalLeads}</td>
+                    <td>{contractor.completedLeads}</td>
+                    <td>{contractor.rejectedLeads}</td>
+                    <td>{contractor.inProgressLeads}</td>
+                    <td>{contractor.draftLeads}</td>
+                    <td>
+                      {contractor.approvalRate !== null
+                        ? `${contractor.approvalRate.toString()}%`
+                        : '—'}
+                    </td>
+                    <td>{contractor.leadsLast7Days}</td>
+                    <td>
+                      {contractor.avgReviewHours !== null
+                        ? `${contractor.avgReviewHours.toString()}h`
+                        : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {contractors.length === 0 && (
+              <p className="demo-muted p-4 text-sm">
+                No contractors have logged any leads yet.
+              </p>
+            )}
+          </div>
+        )}
       </section>
     </main>
   )

@@ -10,6 +10,7 @@ import { ApiError } from '#/lib/api'
 import { Pill } from '#/components/StatusPill'
 import LeadQueueList from '#/components/LeadQueueList'
 import { LeadDetailHeader, LeadFieldsGrid, LeadNotes } from '#/components/LeadDetailFields'
+import Skeleton, { QueueListSkeleton, LeadDetailSkeleton } from '#/components/Skeleton'
 
 export const Route = createFileRoute('/workflow/$contractorId')({
   component: () => {
@@ -46,7 +47,7 @@ function AdminContractorHistoryPage() {
   const { contractors } = useContractors()
   const contractorName =
     contractors.find((c) => c.id === contractorId)?.name ?? 'Contractor'
-  const { leads } = useLeads()
+  const { leads, loading } = useLeads()
   const history = sortByRecentlyUpdated(
     leads.filter((lead) => lead.assignedTo === contractorId),
   )
@@ -76,16 +77,22 @@ function AdminContractorHistoryPage() {
           <h2 className="demo-section-title mb-3">
             History ({history.length})
           </h2>
-          <LeadQueueList
-            leads={history}
-            selectedId={selected?.id ?? null}
-            onSelect={setSelectedId}
-            emptyMessage="No leads logged yet."
-          />
+          {loading ? (
+            <QueueListSkeleton />
+          ) : (
+            <LeadQueueList
+              leads={history}
+              selectedId={selected?.id ?? null}
+              onSelect={setSelectedId}
+              emptyMessage="No leads logged yet."
+            />
+          )}
         </div>
 
         <div className="demo-panel">
-          {selected ? (
+          {loading ? (
+            <LeadDetailSkeleton />
+          ) : selected ? (
             <LeadDetailReadOnly lead={selected} />
           ) : (
             <p className="demo-muted text-sm">
@@ -199,7 +206,7 @@ function TabButton({
 
 function ContractorWorkflowTab() {
   const { contractorId } = Route.useParams()
-  const { leads, createLead } = useLeads()
+  const { leads, loading, createLead } = useLeads()
   const history = sortByRecentlyUpdated(
     leads.filter((lead) => lead.assignedTo === contractorId),
   )
@@ -225,16 +232,22 @@ function ContractorWorkflowTab() {
           <h2 className="demo-section-title mb-3">
             My Leads ({history.length})
           </h2>
-          <LeadQueueList
-            leads={history}
-            selectedId={selected?.id ?? null}
-            onSelect={setSelectedId}
-            emptyMessage="No leads logged yet."
-          />
+          {loading ? (
+            <QueueListSkeleton />
+          ) : (
+            <LeadQueueList
+              leads={history}
+              selectedId={selected?.id ?? null}
+              onSelect={setSelectedId}
+              emptyMessage="No leads logged yet."
+            />
+          )}
         </div>
 
         <div className="demo-panel">
-          {selected ? (
+          {loading ? (
+            <LeadDetailSkeleton />
+          ) : selected ? (
             <LeadDetailReadOnly lead={selected} />
           ) : (
             <p className="demo-muted text-sm">
@@ -251,7 +264,7 @@ function ContractorWorkflowTab() {
 
 function DraftEmailTab() {
   const { contractorId } = Route.useParams()
-  const { leads, saveDraftEmail } = useLeads()
+  const { leads, loading, saveDraftEmail } = useLeads()
   const myLeads = sortByRecentlyUpdated(
     leads.filter((lead) => lead.assignedTo === contractorId),
   )
@@ -273,16 +286,22 @@ function DraftEmailTab() {
           <h2 className="demo-section-title mb-3">
             My Leads ({myLeads.length})
           </h2>
-          <LeadQueueList
-            leads={myLeads}
-            selectedId={selected?.id ?? null}
-            onSelect={setSelectedId}
-            emptyMessage="No leads yet. Add one in the My Leads tab."
-          />
+          {loading ? (
+            <QueueListSkeleton />
+          ) : (
+            <LeadQueueList
+              leads={myLeads}
+              selectedId={selected?.id ?? null}
+              onSelect={setSelectedId}
+              emptyMessage="No leads yet. Add one in the My Leads tab."
+            />
+          )}
         </div>
 
         <div className="demo-panel">
-          {selected ? (
+          {loading ? (
+            <DraftFormSkeleton />
+          ) : selected ? (
             <DraftEmailForm
               lead={selected}
               onSave={(subject, body) =>
@@ -296,6 +315,19 @@ function DraftEmailTab() {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function DraftFormSkeleton() {
+  return (
+    <div>
+      <Skeleton className="mb-2 h-6 w-40" />
+      <Skeleton className="mb-4 h-4 w-56" />
+      <Skeleton className="mb-2 h-3 w-16" />
+      <Skeleton className="mb-4 h-9 w-full" />
+      <Skeleton className="mb-2 h-3 w-20" />
+      <Skeleton className="h-32 w-full" />
     </div>
   )
 }

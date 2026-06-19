@@ -6,6 +6,7 @@ import { useContractorAnalytics } from '#/lib/contractor-analytics'
 import { type User } from '#/lib/auth-store'
 import RequireAuth from '#/components/RequireAuth'
 import { Pill } from '#/components/StatusPill'
+import { ContractorRowSkeleton } from '#/components/Skeleton'
 
 export const Route = createFileRoute('/contractors')({
   component: () => (
@@ -68,6 +69,9 @@ function ContractorsPage() {
             </p>
           )}
 
+          {loading ? (
+            <ContractorRowSkeleton />
+          ) : (
           <div className="divide-y divide-(--line)">
             {contractors.map((contractor) => {
               const stats = getStats(contractor.id)
@@ -150,12 +154,13 @@ function ContractorsPage() {
                 </div>
               )
             })}
-            {!loading && contractors.length === 0 && (
+            {contractors.length === 0 && (
               <p className="demo-muted py-4 text-sm">
                 No contractor accounts yet.
               </p>
             )}
           </div>
+          )}
         </div>
 
         <AddContractorForm onCreated={refetch} />

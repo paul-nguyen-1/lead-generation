@@ -8,6 +8,7 @@ import { formatDateTime } from '#/lib/format'
 import LeadQueueList from '#/components/LeadQueueList'
 import RequireAuth from '#/components/RequireAuth'
 import { LeadDetailHeader, LeadFieldsGrid, LeadNotes } from '#/components/LeadDetailFields'
+import Skeleton, { QueueListSkeleton } from '#/components/Skeleton'
 
 export const Route = createFileRoute('/approvals')({
   component: () => (
@@ -18,7 +19,7 @@ export const Route = createFileRoute('/approvals')({
 })
 
 function ApprovalsPage() {
-  const { leads, saveDraftEmail, approveLead, sendBackToContractor, rejectLead } =
+  const { leads, loading, saveDraftEmail, approveLead, sendBackToContractor, rejectLead } =
     useLeads()
   const { contractors } = useContractors()
   const { user } = useAuth()
@@ -49,16 +50,22 @@ function ApprovalsPage() {
           <h2 className="demo-section-title mb-3">
             Awaiting Approval ({queue.length})
           </h2>
-          <LeadQueueList
-            leads={queue}
-            selectedId={selected?.id ?? null}
-            onSelect={setSelectedId}
-            emptyMessage="No leads waiting on your review."
-          />
+          {loading ? (
+            <QueueListSkeleton />
+          ) : (
+            <LeadQueueList
+              leads={queue}
+              selectedId={selected?.id ?? null}
+              onSelect={setSelectedId}
+              emptyMessage="No leads waiting on your review."
+            />
+          )}
         </div>
 
         <div className="demo-panel">
-          {selected ? (
+          {loading ? (
+            <ApprovalDetailSkeleton />
+          ) : selected ? (
             <ApprovalDetail
               lead={selected}
               contractors={contractors}
@@ -101,6 +108,37 @@ function ApprovalsPage() {
         />
       )}
     </main>
+  )
+}
+
+function ApprovalDetailSkeleton() {
+  return (
+    <div>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="flex-1">
+          <Skeleton className="mb-2 h-6 w-48" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <Skeleton className="h-6 w-20 rounded-full" />
+      </div>
+
+      <div className="mb-5 grid gap-3 sm:grid-cols-2">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i}>
+            <Skeleton className="mb-1.5 h-3 w-20" />
+            <Skeleton className="h-4 w-full" />
+          </div>
+        ))}
+      </div>
+
+      <Skeleton className="mb-5 h-56 w-full rounded-xl" />
+
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Skeleton className="h-10 w-40 rounded-lg" />
+        <Skeleton className="h-10 w-44 rounded-lg" />
+        <Skeleton className="h-10 w-24 rounded-lg" />
+      </div>
+    </div>
   )
 }
 

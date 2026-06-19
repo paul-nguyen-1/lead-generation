@@ -2,6 +2,7 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import { useLeads } from '#/lib/leads-store'
 import { useContractors } from '#/lib/contractors'
 import RequireAuth from '#/components/RequireAuth'
+import { CardGridSkeleton } from '#/components/Skeleton'
 
 export const Route = createFileRoute('/workflow/')({
   component: () => (
@@ -13,7 +14,7 @@ export const Route = createFileRoute('/workflow/')({
 
 function WorkflowIndexPage() {
   const { leads } = useLeads()
-  const { contractors } = useContractors()
+  const { contractors, loading } = useContractors()
 
   return (
     <main className="page-wrap px-4 py-12">
@@ -27,29 +28,33 @@ function WorkflowIndexPage() {
         </p>
       </section>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {contractors.map((contractor) => {
-          const history = leads.filter(
-            (lead) => lead.assignedTo === contractor.id,
-          )
-          return (
-            <Link
-              key={contractor.id}
-              to="/workflow/$contractorId"
-              params={{ contractorId: contractor.id }}
-              className="island-shell feature-card rounded-2xl p-5 no-underline"
-            >
-              <h2 className="m-0 text-lg font-bold text-[var(--sea-ink)]">
-                {contractor.name}
-              </h2>
-              <p className="m-0 mt-2 text-sm text-[var(--sea-ink-soft)]">
-                {history.length} {history.length === 1 ? 'lead' : 'leads'}{' '}
-                logged
-              </p>
-            </Link>
-          )
-        })}
-      </div>
+      {loading ? (
+        <CardGridSkeleton />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {contractors.map((contractor) => {
+            const history = leads.filter(
+              (lead) => lead.assignedTo === contractor.id,
+            )
+            return (
+              <Link
+                key={contractor.id}
+                to="/workflow/$contractorId"
+                params={{ contractorId: contractor.id }}
+                className="island-shell feature-card rounded-2xl p-5 no-underline"
+              >
+                <h2 className="m-0 text-lg font-bold text-[var(--sea-ink)]">
+                  {contractor.name}
+                </h2>
+                <p className="m-0 mt-2 text-sm text-[var(--sea-ink-soft)]">
+                  {history.length} {history.length === 1 ? 'lead' : 'leads'}{' '}
+                  logged
+                </p>
+              </Link>
+            )
+          })}
+        </div>
+      )}
     </main>
   )
 }
