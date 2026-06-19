@@ -68,91 +68,90 @@ function ContractorsPage() {
             </p>
           )}
 
-          <div className="demo-table-shell">
-            <table className="demo-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Status</th>
-                  <th>Access</th>
-                  <th>Leads</th>
-                  <th>Drafts</th>
-                  <th>Approved</th>
-                  <th>Rejected</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {contractors.map((contractor) => {
-                  const stats = getStats(contractor.id)
-                  return (
-                  <tr key={contractor.id}>
-                    <td className="font-semibold text-[var(--sea-ink)]">
-                      {contractor.name}
-                    </td>
-                    <td className="text-sm text-[var(--sea-ink-soft)]">
-                      {contractor.email}
-                    </td>
-                    <td>
+          <div className="divide-y divide-(--line)">
+            {contractors.map((contractor) => {
+              const stats = getStats(contractor.id)
+              return (
+                <div
+                  key={contractor.id}
+                  className="flex items-center justify-between gap-5 py-4 first:pt-0 last:pb-0"
+                >
+                  <div className="shrink-0 text-center" style={{ width: '2.75rem' }}>
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-(--lagoon) text-sm font-bold text-white">
+                      {contractor.name.charAt(0).toUpperCase()}
+                    </div>
+                    <p className="mt-1 truncate text-[10px] font-medium text-(--sea-ink-soft)">
+                      {contractor.name.split(' ')[0]}
+                    </p>
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       {contractor.isActive ? (
                         <Pill label="Active" color="#16a34a" />
                       ) : (
                         <Pill label="Deactivated" color="#dc2626" />
                       )}
-                    </td>
-                    <td>
-                      <div className="flex flex-wrap gap-1">
-                        {contractor.permissions?.leadsAccess ? (
-                          <Pill label="Leads" color="#2563eb" />
-                        ) : null}
-                        {contractor.permissions?.draftEmailAccess ? (
-                          <Pill label="Draft Email" color="#7c3aed" />
-                        ) : null}
-                        {!contractor.permissions?.leadsAccess &&
-                          !contractor.permissions?.draftEmailAccess && (
-                            <span className="text-xs text-[var(--sea-ink-soft)]">
-                              None
-                            </span>
-                          )}
-                      </div>
-                    </td>
-                    <td className="text-center text-sm">{stats?.totalLeads ?? '—'}</td>
-                    <td className="text-center text-sm">{stats?.draftLeads ?? '—'}</td>
-                    <td className="text-center text-sm">{stats?.completedLeads ?? '—'}</td>
-                    <td className="text-center text-sm">{stats?.rejectedLeads ?? '—'}</td>
-                    <td>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          className="demo-button demo-button-secondary"
-                          onClick={() => setManagingContractor(contractor)}
-                        >
-                          Manage Access
-                        </button>
-                        <button
-                          type="button"
-                          className={
-                            contractor.isActive
-                              ? 'demo-button demo-button-danger'
-                              : 'demo-button demo-button-secondary'
-                          }
-                          disabled={updatingId === contractor.id}
-                          onClick={() =>
-                            void toggleActive(contractor.id, !contractor.isActive)
-                          }
-                        >
-                          {contractor.isActive ? 'Deactivate' : 'Activate'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                      {contractor.permissions?.leadsAccess && (
+                        <Pill label="Leads" color="#2563eb" />
+                      )}
+                      {contractor.permissions?.draftEmailAccess && (
+                        <Pill label="Draft Email" color="#7c3aed" />
+                      )}
+                      {!contractor.permissions?.leadsAccess &&
+                        !contractor.permissions?.draftEmailAccess && (
+                          <span className="text-xs text-(--sea-ink-soft)">No permissions</span>
+                        )}
+                    </div>
+                    <p className="mt-1 text-xs text-(--sea-ink-soft)">{contractor.email}</p>
+                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-(--sea-ink-soft)">
+                      <span>
+                        <strong className="text-(--sea-ink)">{stats?.totalLeads ?? 0}</strong> leads
+                      </span>
+                      <span>
+                        <strong className="text-(--sea-ink)">{stats?.draftLeads ?? 0}</strong> drafts
+                      </span>
+                      <span>
+                        <strong className="text-(--sea-ink)">{stats?.completedLeads ?? 0}</strong> approved
+                      </span>
+                      <span>
+                        <strong className="text-(--sea-ink)">{stats?.rejectedLeads ?? 0}</strong> rejected
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 flex-col gap-2">
+                    <button
+                      type="button"
+                      className="demo-button demo-button-secondary"
+                      onClick={() => setManagingContractor(contractor)}
+                    >
+                      Manage Access
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        contractor.isActive
+                          ? 'demo-button demo-button-danger'
+                          : 'demo-button demo-button-secondary'
+                      }
+                      disabled={updatingId === contractor.id}
+                      onClick={() =>
+                        void toggleActive(contractor.id, !contractor.isActive)
+                      }
+                    >
+                      {updatingId === contractor.id
+                        ? '…'
+                        : contractor.isActive
+                          ? 'Deactivate'
+                          : 'Activate'}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
             {!loading && contractors.length === 0 && (
-              <p className="demo-muted p-4 text-sm">
+              <p className="demo-muted py-4 text-sm">
                 No contractor accounts yet.
               </p>
             )}
@@ -280,7 +279,7 @@ function ToggleRow({
 }) {
   return (
     <label className="flex cursor-pointer items-start gap-3">
-      <div className="relative mt-0.5 flex-shrink-0">
+      <div className="relative mt-0.5 shrink-0">
         <input
           type="checkbox"
           className="sr-only"
@@ -290,7 +289,7 @@ function ToggleRow({
         <div
           className={[
             'h-5 w-9 rounded-full transition-colors',
-            checked ? 'bg-[var(--lagoon)]' : 'bg-[var(--line)]',
+            checked ? 'bg-(--lagoon)' : 'bg-(--line)',
           ].join(' ')}
         />
         <div

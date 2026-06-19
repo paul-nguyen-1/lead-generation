@@ -43,6 +43,13 @@ export default function Header() {
                   Workflow
                 </Link>
                 <Link
+                  to="/drafts"
+                  className="nav-link"
+                  activeProps={{ className: 'nav-link is-active' }}
+                >
+                  Drafts
+                </Link>
+                <Link
                   to="/approvals"
                   className="nav-link"
                   activeProps={{ className: 'nav-link is-active' }}
@@ -55,13 +62,6 @@ export default function Header() {
                   activeProps={{ className: 'nav-link is-active' }}
                 >
                   Completed
-                </Link>
-                <Link
-                  to="/drafts"
-                  className="nav-link"
-                  activeProps={{ className: 'nav-link is-active' }}
-                >
-                  Drafts
                 </Link>
                 <Link
                   to="/contractors"

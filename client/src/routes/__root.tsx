@@ -46,8 +46,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <LeadsProvider>
             <Header />
             {children}
-            <Footer />
-            <TanStackDevtools
+            {/* <Footer /> */}
+            {/* <TanStackDevtools
               config={{
                 position: 'bottom-right',
               }}
@@ -57,7 +57,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
                   render: <TanStackRouterDevtoolsPanel />,
                 },
               ]}
-            />
+            /> */}
           </LeadsProvider>
         </AuthProvider>
         <Scripts />
