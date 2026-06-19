@@ -41,7 +41,7 @@ function DraftsPage() {
     setSuccess(null)
     setAssigning(true)
     try {
-      await apiFetch(`/scraper/leads/${leadId}/auto-assign-draft`, {
+      await apiFetch(`/leads/${leadId}/auto-assign-draft`, {
         method: 'PATCH',
       })
       setSuccess('Lead auto-assigned to the contractor with the fewest leads.')
@@ -59,7 +59,7 @@ function DraftsPage() {
     setSuccess(null)
     setAssigning(true)
     try {
-      await apiFetch(`/scraper/leads/${leadId}/assign`, {
+      await apiFetch(`/leads/${leadId}/assign`, {
         method: 'PATCH',
         body: { userId: contractorId },
       })

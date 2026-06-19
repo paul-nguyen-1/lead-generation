@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { EmailModule } from '../email/email.module';
 import { Lead, LeadSchema } from './schemas/lead.schema';
-import { ScraperController } from './scraper.controller';
-import { ScraperService } from './scraper.service';
+import { LeadsController } from './leads.controller';
+import { LeadsService } from './leads.service';
 import { UsersModule } from '../users/users.module';
 
 @Module({
@@ -12,7 +12,7 @@ import { UsersModule } from '../users/users.module';
     UsersModule,
     EmailModule,
   ],
-  controllers: [ScraperController],
-  providers: [ScraperService],
+  controllers: [LeadsController],
+  providers: [LeadsService],
 })
-export class ScraperModule {}
+export class LeadsModule {}

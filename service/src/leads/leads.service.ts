@@ -39,8 +39,8 @@ export interface ContractorAnalytics {
 }
 
 @Injectable()
-export class ScraperService {
-  private readonly logger = new Logger(ScraperService.name);
+export class LeadsService {
+  private readonly logger = new Logger(LeadsService.name);
 
   constructor(
     @InjectModel(Lead.name)
@@ -103,7 +103,7 @@ export class ScraperService {
     status: LeadStatus,
   ): Promise<LeadDocument> {
     const lead = await this.leadModel
-      .findByIdAndUpdate(id, { status }, { new: true })
+      .findByIdAndUpdate(id, { status }, { returnDocument: 'after' })
       .exec();
     if (!lead) throw new NotFoundException('Lead not found');
     return lead;
@@ -114,7 +114,7 @@ export class ScraperService {
       .findByIdAndUpdate(
         id,
         { assignedTo: new Types.ObjectId(userId) },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
     if (!lead) throw new NotFoundException('Lead not found');
@@ -196,7 +196,7 @@ export class ScraperService {
             assignedTo: new Types.ObjectId(callerId),
           }),
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
     if (!lead) throw new NotFoundException('Lead not found');
@@ -205,7 +205,7 @@ export class ScraperService {
 
   async setLeadAdminNotes(id: string, notes: string): Promise<LeadDocument> {
     const lead = await this.leadModel
-      .findByIdAndUpdate(id, { adminNotes: notes }, { new: true })
+      .findByIdAndUpdate(id, { adminNotes: notes }, { returnDocument: 'after' })
       .exec();
     if (!lead) throw new NotFoundException('Lead not found');
     return lead;
@@ -219,7 +219,7 @@ export class ScraperService {
           status: LeadStatus.PendingApproval,
           contractorReviewedAt: new Date(),
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
     if (!lead) throw new NotFoundException('Lead not found');
@@ -231,14 +231,14 @@ export class ScraperService {
       .findByIdAndUpdate(
         id,
         { status: LeadStatus.ContractorReview },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
     if (!lead) throw new NotFoundException('Lead not found');
     return lead;
   }
 
-  async approveLead(id: string): Promise<LeadDocument> {
+  async approveLead(id: string, adminId: string): Promise<LeadDocument> {
     const now = new Date();
     const existing = await this.findLead(id);
 
@@ -251,8 +251,9 @@ export class ScraperService {
           adminReviewedAt: now,
           emailStatus: EmailStatus.Sent,
           emailSentAt: now,
+          approvedBy: new Types.ObjectId(adminId),
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
     if (!lead) throw new NotFoundException('Lead not found');
@@ -281,7 +282,7 @@ export class ScraperService {
           adminDecision: AdminDecision.Rejected,
           adminReviewedAt: new Date(),
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
     if (!lead) throw new NotFoundException('Lead not found');

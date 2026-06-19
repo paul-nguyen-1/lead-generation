@@ -22,14 +22,14 @@ import { SaveDraftEmailDto } from './dto/save-draft-email.dto';
 import { ToggleLeadCriterionDto } from './dto/toggle-lead-criterion.dto';
 import { UpdateLeadNotesDto } from './dto/update-lead-notes.dto';
 import { UpdateLeadStatusDto } from './dto/update-lead-status.dto';
-import { ScraperService } from './scraper.service';
+import { LeadsService } from './leads.service';
 
-@ApiTags('scraper')
+@ApiTags('leads')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Controller('scraper')
-export class ScraperController {
-  constructor(private readonly scraperService: ScraperService) {}
+@Controller('leads')
+export class LeadsController {
+  constructor(private readonly leadsService: LeadsService) {}
 
   @Get('analytics')
   @Roles(Role.Admin)
@@ -37,75 +37,75 @@ export class ScraperController {
     summary: 'Get lead-generation efficiency stats and rankings per contractor',
   })
   getContractorAnalytics() {
-    return this.scraperService.getContractorAnalytics();
+    return this.leadsService.getContractorAnalytics();
   }
 
-  @Post('leads')
+  @Post()
   @Roles(Role.Admin, Role.Contractor)
   @ApiOperation({ summary: 'Log a new lead' })
   createLead(
     @Body() dto: CreateLeadDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.scraperService.createLead(dto, user.id);
+    return this.leadsService.createLead(dto, user.id);
   }
 
-  @Get('leads')
+  @Get()
   @Roles(Role.Admin, Role.Contractor)
   @ApiOperation({ summary: 'List leads' })
   findLeads(@Query() query: QueryLeadsDto) {
-    return this.scraperService.findLeads(query);
+    return this.leadsService.findLeads(query);
   }
 
-  @Get('leads/:id')
+  @Get(':id')
   @Roles(Role.Admin, Role.Contractor)
   @ApiOperation({ summary: 'Get a lead' })
   findLead(@Param('id') id: string) {
-    return this.scraperService.findLead(id);
+    return this.leadsService.findLead(id);
   }
 
-  @Patch('leads/:id/status')
+  @Patch(':id/status')
   @Roles(Role.Admin, Role.Contractor)
   @ApiOperation({ summary: "Update a lead's pipeline status" })
   updateLeadStatus(@Param('id') id: string, @Body() dto: UpdateLeadStatusDto) {
-    return this.scraperService.updateLeadStatus(id, dto.status);
+    return this.leadsService.updateLeadStatus(id, dto.status);
   }
 
-  @Patch('leads/:id/assign')
+  @Patch(':id/assign')
   @Roles(Role.Admin)
   @ApiOperation({ summary: 'Assign a lead to a user' })
   assignLead(@Param('id') id: string, @Body() dto: AssignLeadDto) {
-    return this.scraperService.assignLead(id, dto.userId);
+    return this.leadsService.assignLead(id, dto.userId);
   }
 
-  @Patch('leads/:id/criteria')
+  @Patch(':id/criteria')
   @Roles(Role.Admin, Role.Contractor)
   @ApiOperation({ summary: 'Toggle a review criterion for a lead' })
   toggleLeadCriterion(
     @Param('id') id: string,
     @Body() dto: ToggleLeadCriterionDto,
   ) {
-    return this.scraperService.toggleLeadCriterion(id, dto.criterionId);
+    return this.leadsService.toggleLeadCriterion(id, dto.criterionId);
   }
 
-  @Patch('leads/:id/contractor-notes')
+  @Patch(':id/contractor-notes')
   @Roles(Role.Admin, Role.Contractor)
   @ApiOperation({ summary: "Update a lead's contractor notes" })
   setLeadContractorNotes(
     @Param('id') id: string,
     @Body() dto: UpdateLeadNotesDto,
   ) {
-    return this.scraperService.setLeadContractorNotes(id, dto.notes);
+    return this.leadsService.setLeadContractorNotes(id, dto.notes);
   }
 
-  @Patch('leads/:id/admin-notes')
+  @Patch(':id/admin-notes')
   @Roles(Role.Admin)
   @ApiOperation({ summary: "Update a lead's internal admin notes" })
   setLeadAdminNotes(@Param('id') id: string, @Body() dto: UpdateLeadNotesDto) {
-    return this.scraperService.setLeadAdminNotes(id, dto.notes);
+    return this.leadsService.setLeadAdminNotes(id, dto.notes);
   }
 
-  @Patch('leads/:id/draft-email')
+  @Patch(':id/draft-email')
   @Roles(Role.Admin, Role.Contractor)
   @ApiOperation({ summary: 'Save or update a draft outreach email for a lead' })
   saveDraftEmail(
@@ -113,7 +113,7 @@ export class ScraperController {
     @Body() dto: SaveDraftEmailDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.scraperService.saveDraftEmail(
+    return this.leadsService.saveDraftEmail(
       id,
       dto.subject,
       dto.body,
@@ -122,43 +122,43 @@ export class ScraperController {
     );
   }
 
-  @Patch('leads/:id/auto-assign-draft')
+  @Patch(':id/auto-assign-draft')
   @Roles(Role.Admin)
   @ApiOperation({
     summary:
       'Auto-assign a lead to the eligible contractor with the fewest current leads',
   })
   autoAssignDraft(@Param('id') id: string) {
-    return this.scraperService.autoAssignDraft(id);
+    return this.leadsService.autoAssignDraft(id);
   }
 
-  @Patch('leads/:id/submit')
+  @Patch(':id/submit')
   @Roles(Role.Admin, Role.Contractor)
   @ApiOperation({ summary: 'Submit a lead for admin approval' })
   submitLeadForApproval(@Param('id') id: string) {
-    return this.scraperService.submitLeadForApproval(id);
+    return this.leadsService.submitLeadForApproval(id);
   }
 
-  @Patch('leads/:id/send-back')
+  @Patch(':id/send-back')
   @Roles(Role.Admin)
   @ApiOperation({
     summary: 'Send a lead back to the contractor for more review',
   })
   sendLeadBackToContractor(@Param('id') id: string) {
-    return this.scraperService.sendLeadBackToContractor(id);
+    return this.leadsService.sendLeadBackToContractor(id);
   }
 
-  @Patch('leads/:id/approve')
+  @Patch(':id/approve')
   @Roles(Role.Admin)
   @ApiOperation({ summary: 'Approve a lead and mark its email as sent' })
-  approveLead(@Param('id') id: string) {
-    return this.scraperService.approveLead(id);
+  approveLead(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.leadsService.approveLead(id, user.id);
   }
 
-  @Patch('leads/:id/reject')
+  @Patch(':id/reject')
   @Roles(Role.Admin, Role.Contractor)
   @ApiOperation({ summary: 'Reject a lead' })
   rejectLead(@Param('id') id: string) {
-    return this.scraperService.rejectLead(id);
+    return this.leadsService.rejectLead(id);
   }
 }

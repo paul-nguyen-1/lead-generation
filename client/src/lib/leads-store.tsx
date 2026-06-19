@@ -56,6 +56,7 @@ interface ApiLead {
   source: string | null
   notes: string
   status: LeadStatus
+  createdBy: string
   assignedTo: string | null
   criteria: Array<Criterion>
   contractorNotes: string
@@ -65,6 +66,7 @@ interface ApiLead {
   adminReviewedAt: string | null
   emailStatus: EmailStatus
   emailSentAt: string | null
+  approvedBy: string | null
   draftEmailSubject: string
   draftEmailBody: string
   draftEmailCreatedAt: string | null
@@ -86,6 +88,7 @@ function mapLead(raw: ApiLead): Lead {
     dateAdded: raw.createdAt,
     dateUpdated: raw.updatedAt,
     status: raw.status,
+    createdBy: raw.createdBy ?? '',
     assignedTo: raw.assignedTo ?? '',
     criteria: raw.criteria,
     contractorNotes: raw.contractorNotes,
@@ -95,6 +98,7 @@ function mapLead(raw: ApiLead): Lead {
     adminReviewedAt: raw.adminReviewedAt,
     emailStatus: raw.emailStatus,
     emailSentAt: raw.emailSentAt,
+    approvedBy: raw.approvedBy ?? null,
     draftEmailSubject: raw.draftEmailSubject ?? '',
     draftEmailBody: raw.draftEmailBody ?? '',
     draftEmailCreatedAt: raw.draftEmailCreatedAt ?? null,
@@ -116,7 +120,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
     let cancelled = false
     setLoading(true)
-    apiFetch<{ items: Array<ApiLead> }>('/scraper/leads?limit=100')
+    apiFetch<{ items: Array<ApiLead> }>('/leads/leads?limit=100')
       .then((data) => {
         if (!cancelled) setLeads(data.items.map(mapLead))
       })
@@ -143,7 +147,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   }
 
   async function createLead(input: CreateLeadInput) {
-    const created = await apiFetch<ApiLead>('/scraper/leads', {
+    const created = await apiFetch<ApiLead>('/leads', {
       method: 'POST',
       body: input,
     })
@@ -152,7 +156,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
   async function assignLead(leadId: string, contractorId: string) {
     const updated = await apiFetch<ApiLead>(
-      `/scraper/leads/${leadId}/assign`,
+      `/leads/${leadId}/assign`,
       { method: 'PATCH', body: { userId: contractorId } },
     )
     applyUpdate(leadId, updated)
@@ -160,7 +164,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
   async function toggleCriterion(leadId: string, criterionId: string) {
     const updated = await apiFetch<ApiLead>(
-      `/scraper/leads/${leadId}/criteria`,
+      `/leads/${leadId}/criteria`,
       { method: 'PATCH', body: { criterionId } },
     )
     applyUpdate(leadId, updated)
@@ -168,7 +172,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
   async function setContractorNotes(leadId: string, notes: string) {
     const updated = await apiFetch<ApiLead>(
-      `/scraper/leads/${leadId}/contractor-notes`,
+      `/leads/${leadId}/contractor-notes`,
       { method: 'PATCH', body: { notes } },
     )
     applyUpdate(leadId, updated)
@@ -176,7 +180,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
   async function setAdminNotes(leadId: string, notes: string) {
     const updated = await apiFetch<ApiLead>(
-      `/scraper/leads/${leadId}/admin-notes`,
+      `/leads/${leadId}/admin-notes`,
       { method: 'PATCH', body: { notes } },
     )
     applyUpdate(leadId, updated)
@@ -184,7 +188,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
   async function saveDraftEmail(leadId: string, subject: string, body: string) {
     const updated = await apiFetch<ApiLead>(
-      `/scraper/leads/${leadId}/draft-email`,
+      `/leads/${leadId}/draft-email`,
       { method: 'PATCH', body: { subject, body } },
     )
     applyUpdate(leadId, updated)
@@ -192,7 +196,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
   async function autoAssignDraft(leadId: string) {
     const updated = await apiFetch<ApiLead>(
-      `/scraper/leads/${leadId}/auto-assign-draft`,
+      `/leads/${leadId}/auto-assign-draft`,
       { method: 'PATCH' },
     )
     applyUpdate(leadId, updated)
@@ -200,7 +204,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
   async function submitForApproval(leadId: string) {
     const updated = await apiFetch<ApiLead>(
-      `/scraper/leads/${leadId}/submit`,
+      `/leads/${leadId}/submit`,
       { method: 'PATCH' },
     )
     applyUpdate(leadId, updated)
@@ -208,7 +212,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
   async function sendBackToContractor(leadId: string) {
     const updated = await apiFetch<ApiLead>(
-      `/scraper/leads/${leadId}/send-back`,
+      `/leads/${leadId}/send-back`,
       { method: 'PATCH' },
     )
     applyUpdate(leadId, updated)
@@ -216,7 +220,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
   async function approveLead(leadId: string) {
     const updated = await apiFetch<ApiLead>(
-      `/scraper/leads/${leadId}/approve`,
+      `/leads/${leadId}/approve`,
       { method: 'PATCH' },
     )
     applyUpdate(leadId, updated)
@@ -224,7 +228,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
   async function rejectLead(leadId: string) {
     const updated = await apiFetch<ApiLead>(
-      `/scraper/leads/${leadId}/reject`,
+      `/leads/${leadId}/reject`,
       { method: 'PATCH' },
     )
     applyUpdate(leadId, updated)

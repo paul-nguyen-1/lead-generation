@@ -2,11 +2,14 @@ import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useLeads } from '#/lib/leads-store'
 import { useContractors } from '#/lib/contractors'
+import { apiFetch } from '#/lib/api'
+import { useEffect } from 'react'
 import { formatDate, formatDateTime } from '#/lib/format'
 import StatusPill, { Pill } from '#/components/StatusPill'
 import CriteriaChecklist from '#/components/CriteriaChecklist'
 import RequireAuth from '#/components/RequireAuth'
 import type { Lead } from '#/data/leads'
+import type { User } from '#/lib/auth-store'
 
 export const Route = createFileRoute('/completed')({
   component: () => (
@@ -19,11 +22,25 @@ export const Route = createFileRoute('/completed')({
 function CompletedPage() {
   const { leads } = useLeads()
   const { contractors } = useContractors()
+  const [admins, setAdmins] = useState<Array<User>>([])
   const approved = leads.filter((lead) => lead.status === 'completed')
   const rejected = leads.filter((lead) => lead.status === 'rejected')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected =
     [...approved, ...rejected].find((lead) => lead.id === selectedId) ?? null
+
+  useEffect(() => {
+    apiFetch<Array<User>>('/users?role=admin')
+      .then(setAdmins)
+      .catch(() => {})
+  }, [])
+
+  const allUsers = [...contractors, ...admins]
+
+  function userName(id: string | null) {
+    if (!id) return null
+    return allUsers.find((u) => u.id === id)?.name ?? null
+  }
 
   return (
     <main className="page-wrap px-4 py-12">
@@ -164,10 +181,9 @@ function CompletedPage() {
         <section className="island-shell rounded-2xl p-6">
           <LeadHistory
             lead={selected}
-            contractorName={
-              contractors.find((c) => c.id === selected.assignedTo)?.name ??
-              'Unassigned'
-            }
+            loggedByName={userName(selected.createdBy) ?? 'Unknown'}
+            reviewedByName={userName(selected.assignedTo) ?? 'Unknown'}
+            approvedByName={userName(selected.approvedBy) ?? null}
             onClose={() => setSelectedId(null)}
           />
         </section>
@@ -176,13 +192,26 @@ function CompletedPage() {
   )
 }
 
+function TimelineItem({ label, value }: { label: string; value: string }) {
+  return (
+    <li className="demo-list-item flex items-center justify-between gap-3 text-sm text-[var(--sea-ink)]">
+      <span>{label}</span>
+      <span className="text-[var(--sea-ink-soft)]">{value}</span>
+    </li>
+  )
+}
+
 function LeadHistory({
   lead,
-  contractorName,
+  loggedByName,
+  reviewedByName,
+  approvedByName,
   onClose,
 }: {
   lead: Lead
-  contractorName: string
+  loggedByName: string
+  reviewedByName: string
+  approvedByName: string | null
   onClose: () => void
 }) {
   const decisionLabel =
@@ -245,10 +274,8 @@ function LeadHistory({
           </dd>
         </div>
         <div>
-          <dt className="island-kicker mb-1">Submitted By</dt>
-          <dd className="m-0 text-sm text-[var(--sea-ink)]">
-            {contractorName}
-          </dd>
+          <dt className="island-kicker mb-1">Logged By</dt>
+          <dd className="m-0 text-sm text-[var(--sea-ink)]">{loggedByName}</dd>
         </div>
       </dl>
 
@@ -264,36 +291,34 @@ function LeadHistory({
       <div className="mb-5">
         <h3 className="demo-section-title mb-2">Timeline</h3>
         <ul className="m-0 flex list-none flex-col gap-2 p-0">
-          <li className="demo-list-item flex items-center justify-between gap-3 text-sm text-[var(--sea-ink)]">
-            <span>Logged</span>
-            <span className="text-[var(--sea-ink-soft)]">
-              {formatDateTime(lead.dateAdded)}
-            </span>
-          </li>
-          <li className="demo-list-item flex items-center justify-between gap-3 text-sm text-[var(--sea-ink)]">
-            <span>Contractor Review</span>
-            <span className="text-[var(--sea-ink-soft)]">
-              {lead.contractorReviewedAt
+          <TimelineItem
+            label={`Logged by ${loggedByName}`}
+            value={formatDateTime(lead.dateAdded)}
+          />
+          <TimelineItem
+            label={`Contractor Review by ${reviewedByName}`}
+            value={
+              lead.contractorReviewedAt
                 ? formatDateTime(lead.contractorReviewedAt)
-                : '—'}
-            </span>
-          </li>
-          <li className="demo-list-item flex items-center justify-between gap-3 text-sm text-[var(--sea-ink)]">
-            <span>Admin Decision &mdash; {decisionLabel}</span>
-            <span className="text-[var(--sea-ink-soft)]">
-              {lead.adminReviewedAt
+                : '—'
+            }
+          />
+          <TimelineItem
+            label={`${decisionLabel} by ${approvedByName ?? 'Admin'}`}
+            value={
+              lead.adminReviewedAt
                 ? formatDateTime(lead.adminReviewedAt)
-                : '—'}
-            </span>
-          </li>
-          <li className="demo-list-item flex items-center justify-between gap-3 text-sm text-[var(--sea-ink)]">
-            <span>Approval Email</span>
-            <span className="text-[var(--sea-ink-soft)]">
-              {lead.emailStatus === 'sent' && lead.emailSentAt
+                : '—'
+            }
+          />
+          <TimelineItem
+            label="Approval Email Sent"
+            value={
+              lead.emailStatus === 'sent' && lead.emailSentAt
                 ? formatDateTime(lead.emailSentAt)
-                : 'Not sent'}
-            </span>
-          </li>
+                : 'Not sent'
+            }
+          />
         </ul>
       </div>
 

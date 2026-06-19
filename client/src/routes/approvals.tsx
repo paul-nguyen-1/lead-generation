@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useLeads } from '#/lib/leads-store'
 import { useContractors } from '#/lib/contractors'
-import { type User } from '#/lib/auth-store'
+import { useAuth, type User } from '#/lib/auth-store'
 import { type Lead } from '#/data/leads'
 import { formatDate, formatDateTime } from '#/lib/format'
 import StatusPill from '#/components/StatusPill'
@@ -22,12 +22,14 @@ function ApprovalsPage() {
   const { leads, setAdminNotes, saveDraftEmail, approveLead, sendBackToContractor, rejectLead } =
     useLeads()
   const { contractors } = useContractors()
+  const { user } = useAuth()
   const queue = leads.filter((lead) => lead.status === 'pending_approval')
   const [selectedId, setSelectedId] = useState<string | null>(
     queue[0]?.id ?? null,
   )
   const selected =
     queue.find((lead) => lead.id === selectedId) ?? queue[0] ?? null
+  const [pendingApprovalLead, setPendingApprovalLead] = useState<Lead | null>(null)
 
   return (
     <main className="page-wrap px-4 py-12">
@@ -66,7 +68,7 @@ function ApprovalsPage() {
               onSaveDraftEmail={(subject, body) =>
                 void saveDraftEmail(selected.id, subject, body)
               }
-              onApprove={() => void approveLead(selected.id)}
+              onApprove={() => setPendingApprovalLead(selected)}
               onSendBack={() => void sendBackToContractor(selected.id)}
               onReject={() => void rejectLead(selected.id)}
             />
@@ -77,6 +79,18 @@ function ApprovalsPage() {
           )}
         </div>
       </div>
+
+      {pendingApprovalLead && (
+        <ApproveConfirmModal
+          lead={pendingApprovalLead}
+          adminName={user?.name ?? 'Admin'}
+          onConfirm={() => {
+            void approveLead(pendingApprovalLead.id)
+            setPendingApprovalLead(null)
+          }}
+          onCancel={() => setPendingApprovalLead(null)}
+        />
+      )}
     </main>
   )
 }
@@ -322,6 +336,59 @@ function DraftEmailEditor({
       >
         {saving ? 'Saving…' : saved ? 'Saved!' : 'Save Email Draft'}
       </button>
+    </div>
+  )
+}
+
+function ApproveConfirmModal({
+  lead,
+  adminName,
+  onConfirm,
+  onCancel,
+}: {
+  lead: Lead
+  adminName: string
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onCancel() }}
+    >
+      <div className="island-shell w-full max-w-sm rounded-2xl p-6 shadow-xl">
+        <h2 className="mb-1 text-lg font-bold text-[var(--sea-ink)]">
+          Confirm Approval
+        </h2>
+        <p className="mb-1 text-sm text-[var(--sea-ink-soft)]">
+          Approving as <span className="font-semibold text-[var(--sea-ink)]">{adminName}</span>
+        </p>
+        <p className="mb-5 text-sm text-[var(--sea-ink-soft)]">
+          This will approve <span className="font-semibold text-[var(--sea-ink)]">{lead.name}</span>
+          {lead.email ? (
+            <> and send the outreach email to <span className="font-semibold text-[var(--sea-ink)]">{lead.email}</span></>
+          ) : (
+            <> (no email on file — approval only)</>
+          )}
+          .
+        </p>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            className="demo-button"
+            onClick={onConfirm}
+          >
+            Confirm &amp; Send
+          </button>
+          <button
+            type="button"
+            className="demo-button demo-button-secondary"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

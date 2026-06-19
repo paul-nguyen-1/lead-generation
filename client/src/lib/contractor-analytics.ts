@@ -30,7 +30,7 @@ export function useContractorAnalytics() {
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    apiFetch<{ contractors: Array<ContractorAnalytics> }>('/scraper/analytics')
+    apiFetch<{ contractors: Array<ContractorAnalytics> }>('/leads/analytics')
       .then((data) => {
         if (!cancelled) setContractors(data.contractors)
       })

@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { DEFAULT_LEAD_CRITERIA } from '../scraper.constants';
+import { DEFAULT_LEAD_CRITERIA } from '../leads.constants';
 import { AdminDecision } from '../enums/admin-decision.enum';
 import { EmailStatus } from '../enums/email-status.enum';
 import { LeadStatus } from '../enums/lead-status.enum';
@@ -89,6 +89,9 @@ export class Lead {
 
   @Prop({ type: Date, default: null })
   emailSentAt: Date | null;
+
+  @Prop({ type: Types.ObjectId, ref: 'User', default: null })
+  approvedBy: Types.ObjectId | null;
 
   @Prop({ type: String, default: '' })
   draftEmailSubject: string;

@@ -28,6 +28,7 @@ export interface Lead {
   dateAdded: string
   dateUpdated: string
   status: LeadStatus
+  createdBy: string
   assignedTo: string
   criteria: Array<Criterion>
   contractorNotes: string
@@ -37,6 +38,7 @@ export interface Lead {
   adminReviewedAt: string | null
   emailStatus: EmailStatus
   emailSentAt: string | null
+  approvedBy: string | null
   draftEmailSubject: string
   draftEmailBody: string
   draftEmailCreatedAt: string | null

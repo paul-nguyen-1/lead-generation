@@ -108,7 +108,7 @@ export class UsersService implements OnModuleInit {
       update.refreshTokenHash = null;
     }
     const user = await this.userModel
-      .findByIdAndUpdate(userId, update, { new: true })
+      .findByIdAndUpdate(userId, update, { returnDocument: 'after' })
       .exec();
     if (!user) {
       throw new NotFoundException('User not found');
@@ -121,7 +121,7 @@ export class UsersService implements OnModuleInit {
     permissions: ContractorPermissions,
   ): Promise<UserDocument> {
     const user = await this.userModel
-      .findByIdAndUpdate(userId, { permissions }, { new: true })
+      .findByIdAndUpdate(userId, { permissions }, { returnDocument: 'after' })
       .exec();
     if (!user) throw new NotFoundException('User not found');
     return user;
