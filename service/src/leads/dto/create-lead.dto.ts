@@ -1,16 +1,30 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString } from 'class-validator';
 
+export class ExtraFieldDto {
+  @IsString()
+  label: string;
+
+  @IsOptional()
+  @IsString()
+  value?: string;
+}
+
 export class CreateLeadDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  businessName?: string;
+  firstName?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  contactName?: string;
+  lastName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  jobTitle?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -20,7 +34,17 @@ export class CreateLeadDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  phone?: string;
+  linkedinUrl?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  businessName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  website?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -30,15 +54,19 @@ export class CreateLeadDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  website?: string;
+  phone?: string;
 
-  @ApiPropertyOptional({ description: 'Where this lead came from' })
+  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  source?: string;
+  industry?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({ type: [ExtraFieldDto] })
+  @IsOptional()
+  extraFields?: ExtraFieldDto[];
 }

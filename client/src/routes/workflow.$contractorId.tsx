@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
-import { useLeads, type CreateLeadInput } from '#/lib/leads-store'
+import { useLeads, type CreateLeadInput, type ExtraFieldInput } from '#/lib/leads-store'
 import { useAuth } from '#/lib/auth-store'
 import { useContractors } from '#/lib/contractors'
 import RequireAuth from '#/components/RequireAuth'
@@ -63,7 +63,7 @@ function AdminContractorHistoryPage() {
           &larr; All Contractors
         </Link>
         <p className="island-kicker mb-2 mt-3">Workflow</p>
-        <h1 className="display-title text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl">
+        <h1 className="display-title text-3xl font-bold text-(--sea-ink) sm:text-4xl">
           {contractorName} &mdash; History
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-[var(--sea-ink-soft)]">
@@ -121,7 +121,7 @@ function ContractorPortal() {
       <main className="page-wrap px-4 py-12">
         <section className="mb-6">
           <p className="island-kicker mb-2">My Portal</p>
-          <h1 className="display-title text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl">
+          <h1 className="display-title text-3xl font-bold text-(--sea-ink) sm:text-4xl">
             Contractor Workspace
           </h1>
         </section>
@@ -139,7 +139,7 @@ function ContractorPortal() {
     <main className="page-wrap px-4 py-12">
       <section className="mb-6">
         <p className="island-kicker mb-2">My Portal</p>
-        <h1 className="display-title text-3xl font-bold text-[var(--sea-ink)] sm:text-4xl">
+        <h1 className="display-title text-3xl font-bold text-(--sea-ink) sm:text-4xl">
           Contractor Workspace
         </h1>
       </section>
@@ -187,7 +187,7 @@ function TabButton({
         'rounded-t-lg px-5 py-2.5 text-sm font-semibold transition-colors',
         active
           ? 'border-b-2 border-[var(--lagoon)] text-[var(--lagoon-deep)]'
-          : 'text-[var(--sea-ink-soft)] hover:text-[var(--sea-ink)]',
+          : 'text-[var(--sea-ink-soft)] hover:text-(--sea-ink)',
       ].join(' ')}
     >
       {children}
@@ -355,7 +355,7 @@ function DraftEmailForm({
   return (
     <div>
       <div className="mb-4">
-        <h2 className="m-0 text-xl font-bold text-[var(--sea-ink)]">
+        <h2 className="m-0 text-xl font-bold text-(--sea-ink)">
           {lead.name}
         </h2>
         {lead.company && (
@@ -433,14 +433,18 @@ function AddLeadForm({
   onCreate: (input: CreateLeadInput) => Promise<void>
 }) {
   const emptyForm: CreateLeadInput = {
-    businessName: '',
-    contactName: '',
+    firstName: '',
+    lastName: '',
+    jobTitle: '',
     email: '',
-    phone: '',
-    address: '',
+    linkedinUrl: '',
+    businessName: '',
     website: '',
-    source: '',
+    address: '',
+    phone: '',
+    industry: '',
     notes: '',
+    extraFields: [],
   }
   const [form, setForm] = useState<CreateLeadInput>(emptyForm)
   const [error, setError] = useState<string | null>(null)
@@ -453,12 +457,34 @@ function AddLeadForm({
     setForm((current) => ({ ...current, [key]: value }))
   }
 
+  function addExtraField() {
+    setForm((current) => ({
+      ...current,
+      extraFields: [...(current.extraFields ?? []), { label: '', value: '' }],
+    }))
+  }
+
+  function updateExtraField(index: number, patch: Partial<ExtraFieldInput>) {
+    setForm((current) => {
+      const fields = [...(current.extraFields ?? [])]
+      fields[index] = { ...fields[index], ...patch }
+      return { ...current, extraFields: fields }
+    })
+  }
+
+  function removeExtraField(index: number) {
+    setForm((current) => ({
+      ...current,
+      extraFields: (current.extraFields ?? []).filter((_, i) => i !== index),
+    }))
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
 
-    if (!form.businessName?.trim() && !form.contactName?.trim()) {
-      setError('Enter a business name or a contact name.')
+    if (!form.firstName?.trim() && !form.lastName?.trim() && !form.businessName?.trim()) {
+      setError('Enter at least a first name, last name, or company name.')
       return
     }
 
@@ -473,100 +499,142 @@ function AddLeadForm({
     }
   }
 
+  const extraFields = form.extraFields ?? []
+
   return (
     <div className="demo-panel">
-      <h2 className="demo-section-title mb-3">Add Lead</h2>
+      <h2 className="demo-section-title mb-4">Add Lead</h2>
       <form onSubmit={(event) => void handleSubmit(event)}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="lead-business-name" className="island-kicker mb-1 block">
-              Business Name
+            <label htmlFor="lead-first-name" className="island-kicker mb-1 block">
+              First Name
             </label>
             <input
-              id="lead-business-name"
+              id="lead-first-name"
               type="text"
               className="demo-input"
-              value={form.businessName}
-              onChange={(event) => update('businessName', event.target.value)}
+              value={form.firstName}
+              onChange={(e) => update('firstName', e.target.value)}
             />
           </div>
 
           <div>
-            <label htmlFor="lead-contact-name" className="island-kicker mb-1 block">
-              Contact Name
+            <label htmlFor="lead-last-name" className="island-kicker mb-1 block">
+              Last Name
             </label>
             <input
-              id="lead-contact-name"
+              id="lead-last-name"
               type="text"
               className="demo-input"
-              value={form.contactName}
-              onChange={(event) => update('contactName', event.target.value)}
+              value={form.lastName}
+              onChange={(e) => update('lastName', e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="lead-job-title" className="island-kicker mb-1 block">
+              Job Title
+            </label>
+            <input
+              id="lead-job-title"
+              type="text"
+              className="demo-input"
+              value={form.jobTitle}
+              onChange={(e) => update('jobTitle', e.target.value)}
             />
           </div>
 
           <div>
             <label htmlFor="lead-email" className="island-kicker mb-1 block">
-              Email
+              Email Address
             </label>
             <input
               id="lead-email"
               type="email"
               className="demo-input"
               value={form.email}
-              onChange={(event) => update('email', event.target.value)}
+              onChange={(e) => update('email', e.target.value)}
             />
           </div>
 
-          <div>
-            <label htmlFor="lead-phone" className="island-kicker mb-1 block">
-              Phone
+          <div className="sm:col-span-2">
+            <label htmlFor="lead-linkedin" className="island-kicker mb-1 block">
+              LinkedIn URL
             </label>
             <input
-              id="lead-phone"
-              type="tel"
+              id="lead-linkedin"
+              type="url"
               className="demo-input"
-              value={form.phone}
-              onChange={(event) => update('phone', event.target.value)}
+              placeholder="https://linkedin.com/in/…"
+              value={form.linkedinUrl}
+              onChange={(e) => update('linkedinUrl', e.target.value)}
             />
           </div>
 
           <div>
+            <label htmlFor="lead-company" className="island-kicker mb-1 block">
+              Company Name
+            </label>
+            <input
+              id="lead-company"
+              type="text"
+              className="demo-input"
+              value={form.businessName}
+              onChange={(e) => update('businessName', e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="lead-website" className="island-kicker mb-1 block">
+              Website URL
+            </label>
+            <input
+              id="lead-website"
+              type="url"
+              className="demo-input"
+              placeholder="https://…"
+              value={form.website}
+              onChange={(e) => update('website', e.target.value)}
+            />
+          </div>
+
+          <div className="sm:col-span-2">
             <label htmlFor="lead-address" className="island-kicker mb-1 block">
-              Address
+              Full Address
             </label>
             <input
               id="lead-address"
               type="text"
               className="demo-input"
               value={form.address}
-              onChange={(event) => update('address', event.target.value)}
+              onChange={(e) => update('address', e.target.value)}
             />
           </div>
 
           <div>
-            <label htmlFor="lead-website" className="island-kicker mb-1 block">
-              Website
+            <label htmlFor="lead-phone" className="island-kicker mb-1 block">
+              Phone Number
             </label>
             <input
-              id="lead-website"
-              type="text"
+              id="lead-phone"
+              type="tel"
               className="demo-input"
-              value={form.website}
-              onChange={(event) => update('website', event.target.value)}
+              value={form.phone}
+              onChange={(e) => update('phone', e.target.value)}
             />
           </div>
 
-          <div className="sm:col-span-2">
-            <label htmlFor="lead-source" className="island-kicker mb-1 block">
-              Source
+          <div>
+            <label htmlFor="lead-industry" className="island-kicker mb-1 block">
+              Industry
             </label>
             <input
-              id="lead-source"
+              id="lead-industry"
               type="text"
-              placeholder="e.g. Referral, Cold call, Walk-in"
               className="demo-input"
-              value={form.source}
-              onChange={(event) => update('source', event.target.value)}
+              value={form.industry}
+              onChange={(e) => update('industry', e.target.value)}
             />
           </div>
 
@@ -578,10 +646,50 @@ function AddLeadForm({
               id="lead-notes"
               className="demo-textarea"
               value={form.notes}
-              onChange={(event) => update('notes', event.target.value)}
+              onChange={(e) => update('notes', e.target.value)}
             />
           </div>
         </div>
+
+        {extraFields.length > 0 && (
+          <div className="mt-4 grid gap-3">
+            <p className="island-kicker">Additional Fields</p>
+            {extraFields.map((field, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <input
+                  type="text"
+                  className="demo-input w-36 shrink-0"
+                  placeholder="Field name"
+                  value={field.label}
+                  onChange={(e) => updateExtraField(index, { label: e.target.value })}
+                />
+                <input
+                  type="text"
+                  className="demo-input flex-1"
+                  placeholder="Value"
+                  value={field.value}
+                  onChange={(e) => updateExtraField(index, { value: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="shrink-0 rounded p-1 text-sm text-(--sea-ink-soft) hover:text-[#9f3030]"
+                  onClick={() => removeExtraField(index)}
+                  aria-label="Remove field"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          type="button"
+          className="demo-button demo-button-secondary mt-4"
+          onClick={addExtraField}
+        >
+          + Add Field
+        </button>
 
         {error && (
           <p className="mt-3 text-sm text-[#9f3030]" role="alert">
@@ -591,7 +699,7 @@ function AddLeadForm({
 
         <button
           type="submit"
-          className="demo-button mt-4"
+          className="demo-button mt-3 ml-2"
           disabled={submitting}
         >
           {submitting ? 'Adding…' : 'Add Lead'}
@@ -612,7 +720,7 @@ function LeadDetail({
     <div>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="m-0 text-xl font-bold text-[var(--sea-ink)]">
+          <h2 className="m-0 text-xl font-bold text-(--sea-ink)">
             {lead.name}
           </h2>
           {lead.company && (
@@ -625,42 +733,76 @@ function LeadDetail({
       </div>
 
       <dl className="mb-5 grid gap-3 sm:grid-cols-2">
-        <div>
-          <dt className="island-kicker mb-1">Email</dt>
-          <dd className="m-0 text-sm text-[var(--sea-ink)]">{lead.email}</dd>
-        </div>
-        <div>
-          <dt className="island-kicker mb-1">Phone</dt>
-          <dd className="m-0 text-sm text-[var(--sea-ink)]">{lead.phone}</dd>
-        </div>
-        <div>
-          <dt className="island-kicker mb-1">Address</dt>
-          <dd className="m-0 text-sm text-[var(--sea-ink)]">
-            {lead.address}
-          </dd>
-        </div>
-        <div>
-          <dt className="island-kicker mb-1">Website</dt>
-          <dd className="m-0 text-sm text-[var(--sea-ink)]">
-            {lead.website}
-          </dd>
-        </div>
-        <div>
-          <dt className="island-kicker mb-1">Source</dt>
-          <dd className="m-0 text-sm text-[var(--sea-ink)]">{lead.source}</dd>
-        </div>
+        {lead.jobTitle && (
+          <div>
+            <dt className="island-kicker mb-1">Job Title</dt>
+            <dd className="m-0 text-sm text-(--sea-ink)">{lead.jobTitle}</dd>
+          </div>
+        )}
+        {lead.email && (
+          <div>
+            <dt className="island-kicker mb-1">Email Address</dt>
+            <dd className="m-0 text-sm text-(--sea-ink)">{lead.email}</dd>
+          </div>
+        )}
+        {lead.linkedinUrl && (
+          <div className="sm:col-span-2">
+            <dt className="island-kicker mb-1">LinkedIn URL</dt>
+            <dd className="m-0 text-sm text-(--sea-ink)">
+              <a href={lead.linkedinUrl} target="_blank" rel="noreferrer" className="underline">
+                {lead.linkedinUrl}
+              </a>
+            </dd>
+          </div>
+        )}
+        {lead.company && (
+          <div>
+            <dt className="island-kicker mb-1">Company Name</dt>
+            <dd className="m-0 text-sm text-(--sea-ink)">{lead.company}</dd>
+          </div>
+        )}
+        {lead.website && (
+          <div>
+            <dt className="island-kicker mb-1">Website URL</dt>
+            <dd className="m-0 text-sm text-(--sea-ink)">
+              <a href={lead.website} target="_blank" rel="noreferrer" className="underline">
+                {lead.website}
+              </a>
+            </dd>
+          </div>
+        )}
+        {lead.address && (
+          <div className="sm:col-span-2">
+            <dt className="island-kicker mb-1">Full Address</dt>
+            <dd className="m-0 text-sm text-(--sea-ink)">{lead.address}</dd>
+          </div>
+        )}
+        {lead.phone && (
+          <div>
+            <dt className="island-kicker mb-1">Phone Number</dt>
+            <dd className="m-0 text-sm text-(--sea-ink)">{lead.phone}</dd>
+          </div>
+        )}
+        {lead.industry && (
+          <div>
+            <dt className="island-kicker mb-1">Industry</dt>
+            <dd className="m-0 text-sm text-(--sea-ink)">{lead.industry}</dd>
+          </div>
+        )}
         <div>
           <dt className="island-kicker mb-1">Date Added</dt>
-          <dd className="m-0 text-sm text-[var(--sea-ink)]">
-            {formatDate(lead.dateAdded)}
-          </dd>
+          <dd className="m-0 text-sm text-(--sea-ink)">{formatDate(lead.dateAdded)}</dd>
         </div>
         <div>
           <dt className="island-kicker mb-1">Last Updated</dt>
-          <dd className="m-0 text-sm text-[var(--sea-ink)]">
-            {formatDateTime(lead.dateUpdated)}
-          </dd>
+          <dd className="m-0 text-sm text-(--sea-ink)">{formatDateTime(lead.dateUpdated)}</dd>
         </div>
+        {lead.extraFields.map((field, i) => (
+          <div key={i}>
+            <dt className="island-kicker mb-1">{field.label}</dt>
+            <dd className="m-0 text-sm text-(--sea-ink)">{field.value || '—'}</dd>
+          </div>
+        ))}
       </dl>
 
       {lead.notes && (

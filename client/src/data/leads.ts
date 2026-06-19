@@ -15,16 +15,27 @@ export interface Criterion {
   met: boolean
 }
 
+export interface ExtraField {
+  label: string
+  value: string
+}
+
 export interface Lead {
   id: string
+  firstName: string
+  lastName: string
   name: string
   company: string
+  jobTitle: string
   email: string
+  linkedinUrl: string
   phone: string
   address: string
   website: string
+  industry: string
   source: string
   notes: string
+  extraFields: Array<ExtraField>
   dateAdded: string
   dateUpdated: string
   status: LeadStatus

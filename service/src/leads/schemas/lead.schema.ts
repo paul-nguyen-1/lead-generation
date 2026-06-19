@@ -8,6 +8,17 @@ import { LeadStatus } from '../enums/lead-status.enum';
 export type LeadDocument = HydratedDocument<Lead>;
 
 @Schema({ _id: false })
+export class ExtraField {
+  @Prop({ required: true })
+  label: string;
+
+  @Prop({ default: '' })
+  value: string;
+}
+
+export const ExtraFieldSchema = SchemaFactory.createForClass(ExtraField);
+
+@Schema({ _id: false })
 export class Criterion {
   @Prop({ required: true })
   id: string;
@@ -34,19 +45,34 @@ export class Lead {
   updatedAt: Date;
 
   @Prop({ type: String, trim: true, default: null })
-  businessName: string | null;
+  firstName: string | null;
+
+  @Prop({ type: String, trim: true, default: null })
+  lastName: string | null;
+
+  @Prop({ type: String, trim: true, default: null })
+  jobTitle: string | null;
 
   @Prop({ type: String, trim: true, lowercase: true, default: null })
   email: string | null;
 
   @Prop({ type: String, trim: true, default: null })
-  phone: string | null;
+  linkedinUrl: string | null;
+
+  @Prop({ type: String, trim: true, default: null })
+  businessName: string | null;
+
+  @Prop({ type: String, trim: true, default: null })
+  website: string | null;
 
   @Prop({ type: String, trim: true, default: null })
   address: string | null;
 
   @Prop({ type: String, trim: true, default: null })
-  website: string | null;
+  phone: string | null;
+
+  @Prop({ type: String, trim: true, default: null })
+  industry: string | null;
 
   @Prop({ type: String, trim: true, default: null })
   contactName: string | null;
@@ -56,6 +82,9 @@ export class Lead {
 
   @Prop({ type: String, trim: true, default: '' })
   notes: string;
+
+  @Prop({ type: [ExtraFieldSchema], default: [] })
+  extraFields: Array<ExtraField>;
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   createdBy: Types.ObjectId;

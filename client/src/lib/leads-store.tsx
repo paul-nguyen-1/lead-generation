@@ -15,15 +15,24 @@ import type {
   LeadStatus,
 } from '#/data/leads'
 
+export interface ExtraFieldInput {
+  label: string
+  value: string
+}
+
 export interface CreateLeadInput {
-  businessName?: string
-  contactName?: string
+  firstName?: string
+  lastName?: string
+  jobTitle?: string
   email?: string
-  phone?: string
-  address?: string
+  linkedinUrl?: string
+  businessName?: string
   website?: string
-  source?: string
+  address?: string
+  phone?: string
+  industry?: string
   notes?: string
+  extraFields?: Array<ExtraFieldInput>
 }
 
 interface LeadsContextValue {
@@ -47,14 +56,20 @@ const LeadsContext = createContext<LeadsContextValue | null>(null)
 
 interface ApiLead {
   _id: string
-  businessName: string | null
-  contactName: string | null
+  firstName: string | null
+  lastName: string | null
+  jobTitle: string | null
   email: string | null
-  phone: string | null
-  address: string | null
+  linkedinUrl: string | null
+  businessName: string | null
   website: string | null
+  address: string | null
+  phone: string | null
+  industry: string | null
+  contactName: string | null
   source: string | null
   notes: string
+  extraFields: Array<{ label: string; value: string }>
   status: LeadStatus
   createdBy: string
   assignedTo: string | null
@@ -75,16 +90,25 @@ interface ApiLead {
 }
 
 function mapLead(raw: ApiLead): Lead {
+  const firstName = raw.firstName ?? ''
+  const lastName = raw.lastName ?? ''
+  const fullName = [firstName, lastName].filter(Boolean).join(' ')
   return {
     id: raw._id,
-    name: raw.contactName ?? raw.businessName ?? 'Unknown',
-    company: raw.contactName ? (raw.businessName ?? '') : '',
+    firstName,
+    lastName,
+    name: fullName || raw.contactName || raw.businessName || 'Unknown',
+    company: raw.businessName ?? '',
+    jobTitle: raw.jobTitle ?? '',
     email: raw.email ?? '',
+    linkedinUrl: raw.linkedinUrl ?? '',
     phone: raw.phone ?? '',
     address: raw.address ?? '',
     website: raw.website ?? '',
+    industry: raw.industry ?? '',
     source: raw.source ?? '',
     notes: raw.notes,
+    extraFields: raw.extraFields ?? [],
     dateAdded: raw.createdAt,
     dateUpdated: raw.updatedAt,
     status: raw.status,
