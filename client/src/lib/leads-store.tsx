@@ -144,7 +144,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
     let cancelled = false
     setLoading(true)
-    apiFetch<{ items: Array<ApiLead> }>('/leads/leads?limit=100')
+    apiFetch<{ items: Array<ApiLead> }>('/leads?limit=100')
       .then((data) => {
         if (!cancelled) setLeads(data.items.map(mapLead))
       })
