@@ -144,8 +144,11 @@ export class LeadsController {
   @ApiOperation({
     summary: 'Send a lead back to the contractor for more review',
   })
-  sendLeadBackToContractor(@Param('id') id: string) {
-    return this.leadsService.sendLeadBackToContractor(id);
+  sendLeadBackToContractor(
+    @Param('id') id: string,
+    @Body('message') message: string,
+  ) {
+    return this.leadsService.sendLeadBackToContractor(id, message ?? '');
   }
 
   @Patch(':id/approve')

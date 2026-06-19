@@ -23,17 +23,21 @@ function DraftsPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
-  // Leads that haven't been assigned to a drafter yet (no draft created, not completed/rejected)
+  // Contractors eligible for drafting (both permissions, active)
+  const eligibleDrafters = contractors.filter(
+    (c) => c.permissions?.leadsAccess && c.permissions?.draftEmailAccess && c.isActive,
+  )
+
+  const eligibleDrafterIds = new Set(eligibleDrafters.map((c) => c.id))
+
+  // Leads that need draft assignment: not yet drafted, not done,
+  // and NOT already assigned to someone who can draft their own email
   const draftQueue = leads.filter(
     (lead) =>
       lead.emailStatus === 'not_sent' &&
       lead.status !== 'completed' &&
-      lead.status !== 'rejected',
-  )
-
-  // Contractors eligible for auto-assignment (both permissions)
-  const eligibleDrafters = contractors.filter(
-    (c) => c.permissions?.leadsAccess && c.permissions?.draftEmailAccess && c.isActive,
+      lead.status !== 'rejected' &&
+      !eligibleDrafterIds.has(lead.assignedTo),
   )
 
   async function handleAutoAssign(leadId: string) {

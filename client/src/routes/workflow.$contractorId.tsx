@@ -65,7 +65,7 @@ function AdminContractorHistoryPage() {
         <h1 className="display-title text-3xl font-bold text-(--sea-ink) sm:text-4xl">
           {contractorName} &mdash; History
         </h1>
-        <p className="mt-2 max-w-2xl text-sm text-[var(--sea-ink-soft)]">
+        <p className="mt-2 max-w-2xl text-sm text-(--sea-ink-soft)">
           Every lead this contractor has logged, most recently updated first.
         </p>
       </section>
@@ -125,7 +125,7 @@ function ContractorPortal() {
           </h1>
         </section>
         <div className="demo-panel max-w-lg">
-          <p className="text-sm text-[var(--sea-ink-soft)]">
+          <p className="text-sm text-(--sea-ink-soft)">
             You don't have access to any features yet. Contact your admin to
             enable Leads or Draft Email access for your account.
           </p>
@@ -186,7 +186,7 @@ function TabButton({
         'rounded-t-lg px-5 py-2.5 text-sm font-semibold transition-colors',
         active
           ? 'border-b-2 border-[var(--lagoon)] text-[var(--lagoon-deep)]'
-          : 'text-[var(--sea-ink-soft)] hover:text-(--sea-ink)',
+          : 'text-(--sea-ink-soft) hover:text-(--sea-ink)',
       ].join(' ')}
     >
       {children}
@@ -210,7 +210,7 @@ function ContractorWorkflowTab() {
 
   return (
     <div>
-      <p className="mb-6 max-w-2xl text-sm text-[var(--sea-ink-soft)]">
+      <p className="mb-6 max-w-2xl text-sm text-(--sea-ink-soft)">
         Log new leads as you generate them. Once submitted, leads are locked
         and sent to the admin for review.
       </p>
@@ -262,7 +262,7 @@ function DraftEmailTab() {
 
   return (
     <div>
-      <p className="mb-6 max-w-2xl text-sm text-[var(--sea-ink-soft)]">
+      <p className="mb-6 max-w-2xl text-sm text-(--sea-ink-soft)">
         Draft an outreach email for one of your leads. An admin will review,
         edit if needed, and send it on approval.
       </p>
@@ -308,59 +308,133 @@ function DraftEmailForm({
 }) {
   const [subject, setSubject] = useState(lead.draftEmailSubject)
   const [body, setBody] = useState(lead.draftEmailBody)
-  const [saved, setSaved] = useState(false)
+  const [confirming, setConfirming] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const recipientEmail = lead.email || '(no email on file)'
+  const isLocked = lead.emailStatus === 'draft' || lead.emailStatus === 'sent'
 
-  async function handleSave() {
-    if (!subject.trim()) {
-      setError('Subject is required.')
-      return
-    }
-    if (!body.trim()) {
-      setError('Body is required.')
-      return
-    }
+  function handleSaveDraft() {
+    setError(null)
+    if (!subject.trim()) { setError('Subject is required.'); return }
+    if (!body.trim()) { setError('Body is required.'); return }
+    setConfirming(true)
+  }
+
+  async function handleConfirm() {
     setError(null)
     setSaving(true)
     try {
       onSave(subject, body)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2500)
+      setConfirming(false)
+    } catch {
+      setError('Failed to save draft.')
     } finally {
       setSaving(false)
     }
   }
 
+  const header = (
+    <div className="mb-4">
+      <h2 className="m-0 text-xl font-bold text-(--sea-ink)">{lead.name}</h2>
+      {lead.company && (
+        <p className="m-0 text-sm text-(--sea-ink-soft)">{lead.company}</p>
+      )}
+      <p className="mt-1 text-xs text-(--sea-ink-soft)">
+        To: <span className="font-medium">{recipientEmail}</span>
+      </p>
+      {lead.emailStatus === 'draft' && (
+        <div className="mt-2 flex items-center gap-2">
+          <Pill label="Pending" color="#7c3aed" />
+          <span className="text-xs text-(--sea-ink-soft)">
+            Draft submitted — you're done with this one.
+          </span>
+        </div>
+      )}
+      {lead.emailStatus === 'sent' && (
+        <div className="mt-2 flex items-center gap-2">
+          <Pill label="Sent" color="#16a34a" />
+          <span className="text-xs text-(--sea-ink-soft)">
+            Email has been sent by admin.
+          </span>
+        </div>
+      )}
+      {lead.emailStatus === 'not_sent' && lead.adminNotes && (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+          <p className="mb-0.5 text-xs font-semibold text-amber-800">Admin Feedback</p>
+          <p className="m-0 text-sm text-amber-700">{lead.adminNotes}</p>
+        </div>
+      )}
+    </div>
+  )
+
+  // Read-only view once draft is saved or email sent
+  if (isLocked) {
+    return (
+      <div>
+        {header}
+        <div className="mb-3">
+          <p className="island-kicker mb-1">Subject</p>
+          <p className="text-sm text-(--sea-ink)">{lead.draftEmailSubject || '—'}</p>
+        </div>
+        <div>
+          <p className="island-kicker mb-1">Message</p>
+          <p className="demo-card whitespace-pre-wrap text-sm text-(--sea-ink-soft)">
+            {lead.draftEmailBody || '—'}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Confirmation step
+  if (confirming) {
+    return (
+      <div>
+        {header}
+        <p className="mb-4 text-sm text-(--sea-ink-soft)">
+          Review your draft before submitting. Once saved, this cannot be edited.
+        </p>
+        <div className="mb-3">
+          <p className="island-kicker mb-1">Subject</p>
+          <p className="text-sm text-(--sea-ink)">{subject}</p>
+        </div>
+        <div className="mb-5">
+          <p className="island-kicker mb-1">Message</p>
+          <p className="demo-card whitespace-pre-wrap text-sm text-(--sea-ink-soft)">
+            {body}
+          </p>
+        </div>
+        {error && (
+          <p className="mb-3 text-sm text-[#9f3030]" role="alert">{error}</p>
+        )}
+        <div className="flex gap-3">
+          <button
+            type="button"
+            className="demo-button"
+            onClick={() => void handleConfirm()}
+            disabled={saving}
+          >
+            {saving ? 'Saving…' : 'Confirm & Save Draft'}
+          </button>
+          <button
+            type="button"
+            className="demo-button demo-button-secondary"
+            onClick={() => { setConfirming(false); setError(null) }}
+            disabled={saving}
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Edit form
   return (
     <div>
-      <div className="mb-4">
-        <h2 className="m-0 text-xl font-bold text-(--sea-ink)">
-          {lead.name}
-        </h2>
-        {lead.company && (
-          <p className="m-0 text-sm text-[var(--sea-ink-soft)]">{lead.company}</p>
-        )}
-        <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
-          To: <span className="font-medium">{recipientEmail}</span>
-        </p>
-        {lead.emailStatus === 'draft' && lead.draftEmailCreatedAt && (
-          <div className="mt-2 flex items-center gap-2">
-            <Pill label="Pending" color="#7c3aed" />
-            <span className="text-xs text-(--sea-ink-soft)">
-              Draft saved &mdash; awaiting admin review.
-            </span>
-          </div>
-        )}
-        {lead.emailStatus === 'sent' && (
-          <p className="mt-1 text-xs text-[var(--palm)] font-semibold">
-            Email already sent
-          </p>
-        )}
-      </div>
-
+      {header}
       <div className="mb-4">
         <label htmlFor="draft-subject" className="island-kicker mb-1 block">
           Subject
@@ -372,40 +446,30 @@ function DraftEmailForm({
           placeholder="e.g. Following up on your business…"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
-          disabled={lead.emailStatus === 'sent'}
         />
       </div>
-
       <div className="mb-5">
         <label htmlFor="draft-body" className="island-kicker mb-1 block">
           Message
         </label>
         <textarea
           id="draft-body"
-          className="demo-textarea min-h-[220px]"
+          className="demo-textarea min-h-55"
           placeholder="Write your outreach message here…"
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          disabled={lead.emailStatus === 'sent'}
         />
       </div>
-
       {error && (
-        <p className="mb-3 text-sm text-[#9f3030]" role="alert">
-          {error}
-        </p>
+        <p className="mb-3 text-sm text-[#9f3030]" role="alert">{error}</p>
       )}
-
-      {lead.emailStatus !== 'sent' && (
-        <button
-          type="button"
-          className="demo-button"
-          onClick={() => void handleSave()}
-          disabled={saving}
-        >
-          {saving ? 'Saving…' : saved ? 'Saved!' : 'Save Draft'}
-        </button>
-      )}
+      <button
+        type="button"
+        className="demo-button"
+        onClick={handleSaveDraft}
+      >
+        Save Draft
+      </button>
     </div>
   )
 }
@@ -785,7 +849,7 @@ function LeadDetail({
             {lead.name}
           </h2>
           {lead.company && (
-            <p className="m-0 text-sm text-[var(--sea-ink-soft)]">
+            <p className="m-0 text-sm text-(--sea-ink-soft)">
               {lead.company}
             </p>
           )}
@@ -869,7 +933,7 @@ function LeadDetail({
       {lead.notes && (
         <div className="mb-5">
           <h3 className="demo-section-title mb-2">Lead Details</h3>
-          <p className="demo-card m-0 text-sm text-[var(--sea-ink-soft)]">
+          <p className="demo-card m-0 text-sm text-(--sea-ink-soft)">
             {lead.notes}
           </p>
         </div>

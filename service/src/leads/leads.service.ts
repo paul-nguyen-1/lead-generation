@@ -195,9 +195,10 @@ export class LeadsService {
           draftEmailBody: body,
           draftEmailCreatedAt: new Date(),
           emailStatus: EmailStatus.Draft,
-          // Auto-assign the lead to the contractor saving the draft
           ...(callerRole === Role.Contractor && {
             assignedTo: new Types.ObjectId(callerId),
+            status: LeadStatus.PendingApproval,
+            contractorReviewedAt: new Date(),
           }),
         },
         { returnDocument: 'after' },
@@ -230,11 +231,21 @@ export class LeadsService {
     return lead;
   }
 
-  async sendLeadBackToContractor(id: string): Promise<LeadDocument> {
+  async sendLeadBackToContractor(
+    id: string,
+    message: string,
+  ): Promise<LeadDocument> {
     const lead = await this.leadModel
       .findByIdAndUpdate(
         id,
-        { status: LeadStatus.ContractorReview },
+        {
+          status: LeadStatus.ContractorReview,
+          emailStatus: EmailStatus.NotSent,
+          draftEmailSubject: '',
+          draftEmailBody: '',
+          draftEmailCreatedAt: null,
+          adminNotes: message,
+        },
         { returnDocument: 'after' },
       )
       .exec();

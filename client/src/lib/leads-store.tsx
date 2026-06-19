@@ -47,7 +47,7 @@ interface LeadsContextValue {
   saveDraftEmail: (leadId: string, subject: string, body: string) => Promise<void>
   autoAssignDraft: (leadId: string) => Promise<void>
   submitForApproval: (leadId: string) => Promise<void>
-  sendBackToContractor: (leadId: string) => Promise<void>
+  sendBackToContractor: (leadId: string, message: string) => Promise<void>
   approveLead: (leadId: string) => Promise<void>
   rejectLead: (leadId: string) => Promise<void>
 }
@@ -93,6 +93,14 @@ function mapLead(raw: ApiLead): Lead {
   const firstName = raw.firstName ?? ''
   const lastName = raw.lastName ?? ''
   const fullName = [firstName, lastName].filter(Boolean).join(' ')
+  // If the contractor already saved a draft, treat the lead as pending_approval
+  // regardless of what the DB status says (handles pre-migration leads).
+  const effectiveStatus =
+    raw.emailStatus === 'draft' &&
+    raw.status !== 'completed' &&
+    raw.status !== 'rejected'
+      ? ('pending_approval' as const)
+      : raw.status
   return {
     id: raw._id,
     firstName,
@@ -111,7 +119,7 @@ function mapLead(raw: ApiLead): Lead {
     extraFields: raw.extraFields ?? [],
     dateAdded: raw.createdAt,
     dateUpdated: raw.updatedAt,
-    status: raw.status,
+    status: effectiveStatus,
     createdBy: raw.createdBy ?? '',
     assignedTo: raw.assignedTo ?? '',
     criteria: raw.criteria,
@@ -234,10 +242,10 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     applyUpdate(leadId, updated)
   }
 
-  async function sendBackToContractor(leadId: string) {
+  async function sendBackToContractor(leadId: string, message: string) {
     const updated = await apiFetch<ApiLead>(
       `/leads/${leadId}/send-back`,
-      { method: 'PATCH' },
+      { method: 'PATCH', body: { message } },
     )
     applyUpdate(leadId, updated)
   }
