@@ -814,16 +814,18 @@ function AddLeadForm({
             <p className="island-kicker">Additional Fields</p>
             {extraFields.map((field, index) => (
               <div key={index} className="flex items-center gap-2">
+                <div className="w-36 shrink-0">
+                  <input
+                    type="text"
+                    className="demo-input"
+                    placeholder="Field name"
+                    value={field.label}
+                    onChange={(e) => updateExtraField(index, { label: e.target.value })}
+                  />
+                </div>
                 <input
                   type="text"
-                  className="demo-input w-36 shrink-0"
-                  placeholder="Field name"
-                  value={field.label}
-                  onChange={(e) => updateExtraField(index, { label: e.target.value })}
-                />
-                <input
-                  type="text"
-                  className="demo-input flex-1"
+                  className="demo-input min-w-0 flex-1"
                   placeholder="Value"
                   value={field.value}
                   onChange={(e) => updateExtraField(index, { value: e.target.value })}
