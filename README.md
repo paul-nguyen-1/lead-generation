@@ -1,6 +1,6 @@
 # Lead Generation Pipeline
 
-Full-stack lead management platform for Tempus Solutions. Contractors log and review leads, draft outreach emails, and submit them for admin approval. Admins manage the approval queue, assign drafts, track who did what, and trigger SMTP delivery — all from a single dashboard.
+Full-stack lead management platform for Tempus Solutions. Contractors log and review leads, draft outreach emails, and submit them for admin approval. Admins manage the approval queue, assign drafts, track who did what, and trigger SMTP delivery, all from a single dashboard.
 
 ## Repo Structure
 
